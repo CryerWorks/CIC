@@ -138,3 +138,7 @@ Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root (both created
 ## Current focus
 **Phase 0 — Foundation rework.** Stand up the Tauri + React + Vite shell, port war-room's React components off the Next.js shell, replace Supabase/Postgres with SQLite (`tauri-plugin-sql`), wire `tauri-plugin-fs`, and establish the data model (PRD §8).
 **Definition of done:** a native desktop window showing the ported HUD, reading/writing local SQLite.
+
+<!-- SPECKIT START -->
+**Active feature:** `001-tauri-shell` — see [specs/001-tauri-shell/plan.md](specs/001-tauri-shell/plan.md) for the implementation plan (Tauri 2 + React + Vite scaffold), plus `research.md`, `data-model.md`, `contracts/`, and `quickstart.md` in that folder.
+<!-- SPECKIT END -->
