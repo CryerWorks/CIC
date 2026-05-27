@@ -140,5 +140,5 @@ Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root (both created
 **Definition of done:** a native desktop window showing the ported HUD, reading/writing local SQLite.
 
 <!-- SPECKIT START -->
-**Active feature:** `003-sqlite-data-layer` — see [specs/003-sqlite-data-layer/plan.md](specs/003-sqlite-data-layer/plan.md) for the implementation plan (tauri-plugin-sql + TS migration runner + full PRD §8 17-table schema + zod models, behind a testable `SqlExecutor` seam — the `src/db/` Pocock spine), plus `research.md`, `data-model.md`, `contracts/db-interface.md`, `contracts/migration-contract.md`, and `quickstart.md` in that folder. (`001-tauri-shell` and `002-design-system` are complete.)
+**Active feature:** `004-app-shell-domains` — see [specs/004-app-shell-domains/plan.md](specs/004-app-shell-domains/plan.md) for the implementation plan (the `src/app/` React shell: React Router HashRouter, a `DbProvider` owning the 003 `SqlExecutor` lifecycle with loading/error/ready states + `useDb()`, sidebar/topbar from the 002 kit, and the first data-backed screen — Domains management CRUD through the 003 repos), plus `research.md`, `data-model.md`, `contracts/provider-and-routing.md`, `contracts/domains-repo.md`, and `quickstart.md`. (`001`–`003` complete.)
 <!-- SPECKIT END -->

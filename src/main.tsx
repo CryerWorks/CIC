@@ -2,19 +2,19 @@ import "./styles/fonts";
 import "./styles/theme.css";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
-import { initDatabase } from "./db/bootstrap";
+import { HashRouter } from "react-router-dom";
+import { DbProvider } from "./app/providers/DbProvider";
+import { AppRoutes } from "./app/router";
 
-// Create + migrate the local SQLite store on startup. Fire-and-forget so it never blocks the
-// first paint; the data layer has no UI consumer yet. Failures are surfaced (logged), not
-// swallowed. Under `npm run dev` (no Tauri runtime) this rejects and logs — expected; the
-// store only exists under `npm run tauri dev`.
-initDatabase().catch((err: unknown) => {
-  console.error("[CIC] Database initialization failed:", err);
-});
-
+// DbProvider owns the SQLite store lifecycle (loading/error/ready) and wraps the router so the
+// AppShell gate can surface it. Routing is the app's entry view now (the StyleGuide moved to
+// the /style route).
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <App />
+    <DbProvider>
+      <HashRouter>
+        <AppRoutes />
+      </HashRouter>
+    </DbProvider>
   </React.StrictMode>,
 );
