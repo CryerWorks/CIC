@@ -25,3 +25,7 @@ export { selectParsed, insert, update, upsert, encodeValue } from "./repositorie
 export * from "./repositories/domains";
 export * from "./repositories/courses";
 export * from "./repositories/milestones";
+
+// Feature 005: the vault-write fingerprint record (conflict detection). Consumed by the vault
+// layer's VaultWriteLog at its composition root.
+export * from "./repositories/vaultWrites";
