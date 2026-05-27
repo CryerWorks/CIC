@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CIC Platform — Design Language (Obsidian Theme)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ===== Obsidian default-dark surfaces ===== */
+    --bg:#1a1a1a;            /* app background */
+    --bg-2:#151515;          /* sunken (inputs, scratchpads) */
+    --panel:#1e1e1e;         /* panel / card background */
+    --panel-2:#222;          /* panel header */
+    --panel-3:#262626;       /* raised / hover */
+    --line:#2c2c2c;          /* divider */
+    --line-bright:#3a3a3a;   /* emphasized border */
+
+    /* ===== accent + semantic (Obsidian) ===== */
+    --accent:#8b6cef;        /* Obsidian purple — PRIMARY / links / active */
+    --accent-dim:#5b48a0;
+    --accent-soft:rgba(139,108,239,0.14);
+    --green:#44cf6e;         /* success / live / healthy */
+    --amber:#e0a72e;         /* attention / today / warning */
+    --red:#fb464c;           /* alert / cold / destructive */
+    --blue:#4c8dff;          /* info / data */
+    --ai:#00bfbc;            /* AI-generated output (machine) — distinct from brand purple */
+
+    --ink:#dadada;           /* text-normal */
+    --ink-dim:#9a9a9a;        /* text-muted */
+    --ink-faint:#666;        /* text-faint */
+
+    /* domain accents cycle */
+    --d1:#8b6cef; --d2:#4c8dff; --d3:#44cf6e; --d4:#e0a72e; --d5:#fb464c;
+
+    --r:8px;                 /* Obsidian soft radius */
+    --r-sm:5px;
+    --ui:'Inter',-apple-system,system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--ui);
+    font-size:13.5px;
+    line-height:1.55;
+    padding:0 0 80px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:0 24px}
+  h1,h2,h3,h4{font-family:var(--ui);font-weight:700;color:var(--ink);letter-spacing:-0.01em}
+  code{font-family:var(--mono);background:var(--bg-2);border:1px solid var(--line);padding:1px 6px;border-radius:var(--r-sm);color:var(--accent);font-size:.88em}
+  a{color:var(--accent);text-decoration:none}
+
+  /* ===== doc header ===== */
+  .doc-head{
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(139,108,239,0.06),transparent);
+    padding:36px 0 28px;margin-bottom:34px;
+  }
+  .doc-head .eyebrow{font-size:11px;letter-spacing:.18em;color:var(--accent);text-transform:uppercase;font-weight:600}
+  .doc-head h1{font-size:40px;line-height:1.05;margin:12px 0 10px;font-weight:800;letter-spacing:-0.02em}
+  .doc-head h1 b{color:var(--accent)}
+  .doc-head p{color:var(--ink-dim);max-width:700px;font-size:14px}
+  .doc-head .meta{margin-top:18px;display:flex;gap:9px;flex-wrap:wrap}
+  .pill{font-size:11px;letter-spacing:.02em;border:1px solid var(--line-bright);color:var(--ink-dim);padding:5px 11px;border-radius:999px}
+  .pill.on{border-color:var(--accent-dim);color:var(--accent);background:var(--accent-soft)}
+
+  /* ===== section scaffolding ===== */
+  section{margin-bottom:54px;scroll-margin-top:20px}
+  .sec-label{display:flex;align-items:center;gap:13px;margin-bottom:18px}
+  .sec-label .num{font-size:12px;color:#fff;background:var(--accent);padding:3px 10px;border-radius:999px;font-weight:700}
+  .sec-label h2{font-size:21px;font-weight:700}
+  .sec-label .rule{flex:1;height:1px;background:var(--line)}
+  .sec-note{color:var(--ink-dim);font-size:13px;margin-bottom:20px;max-width:780px}
+
+  /* ===== token grids ===== */
+  .tok-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}
+  .swatch{border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--panel)}
+  .swatch .chip{height:56px}
+  .swatch .meta{padding:8px 10px;font-size:11px}
+  .swatch .nm{color:var(--ink);font-weight:600;font-size:11px}
+  .swatch .hx{color:var(--ink-dim);font-size:10.5px;font-family:var(--mono)}
+  .swatch .var{color:var(--accent);font-size:10px;font-family:var(--mono)}
+
+  .type-row{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:15px 17px;margin-bottom:9px;display:flex;justify-content:space-between;align-items:baseline;gap:16px}
+  .type-row .spec{font-size:11px;color:var(--ink-dim);white-space:nowrap;font-family:var(--mono)}
+
+  .panel-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:13px}
+  .demo{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:15px}
+  .demo h4{font-size:11px;color:var(--accent);margin-bottom:11px;font-weight:600;letter-spacing:.02em}
+
+  /* ===== shared UI primitives ===== */
+  .hud-panel{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);position:relative;overflow:hidden}
+  .ph{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+  .ph h3{font-size:12.5px;color:var(--ink);font-weight:600}
+  .ph .tag{font-size:10px;color:var(--ink-dim);font-family:var(--mono)}
+  .pb{padding:14px}
+
+  .btn{font-family:var(--ui);cursor:pointer;border-radius:var(--r-sm);font-size:12px;padding:8px 14px;border:none;font-weight:600;background:var(--accent);color:#fff}
+  .btn:hover{background:#9d83f5}
+  .btn.ghost{background:transparent;border:1px solid var(--line-bright);color:var(--ink-dim);font-weight:500}
+  .btn.amber{background:var(--amber);color:#241a04}
+  .btn.violet{background:var(--ai);color:#04201f}   /* AI action */
+  .btn.sm{padding:5px 10px;font-size:11px}
+
+  .stat-cell{padding:12px 15px;border:1px solid var(--line);border-radius:var(--r);background:var(--panel)}
+  .stat-cell .k{font-size:11px;color:var(--ink-dim)}
+  .stat-cell .v{font-size:27px;font-weight:700;line-height:1.15;margin-top:4px;letter-spacing:-0.02em}
+  .stat-cell .v small{font-size:12px;color:var(--ink-dim);font-weight:500}
+  .v.green{color:var(--green)} .v.amber{color:var(--amber)} .v.cyan{color:var(--blue)}
+
+  .bar{height:7px;background:var(--bg-2);border-radius:999px;overflow:hidden;position:relative}
+  .bar>i{position:absolute;left:0;top:0;bottom:0;display:block;border-radius:999px}
+
+  .tagchip{font-size:10.5px;padding:2px 9px;border-radius:999px;font-weight:500;background:var(--accent-soft);color:var(--accent)}
+  .t-green{background:rgba(68,207,110,0.15);color:var(--green)} .t-amber{background:rgba(224,167,46,0.15);color:var(--amber)} .t-cyan{background:rgba(76,141,255,0.15);color:var(--blue)} .t-violet{background:rgba(0,191,188,0.15);color:var(--ai)} .t-red{background:rgba(251,70,76,0.15);color:var(--red)} .t-dim{background:var(--panel-3);color:var(--ink-dim)}
+
+  .listrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+  .listrow:last-child{border-bottom:none}
+  .listrow .led{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .dot-green{background:var(--green)} .dot-amber{background:var(--amber)} .dot-cold{background:var(--red)} .dot-off{background:var(--line-bright)}
+
+  .check{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:12px}
+  .check:last-child{border-bottom:none}
+  .box{width:16px;height:16px;border:1.5px solid var(--accent-dim);border-radius:4px;flex:0 0 auto;margin-top:1px}
+  .check.done .box{background:var(--accent);border-color:var(--accent)}
+  .check.done .box::after{content:"✓";color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;height:100%}
+  .check.done span{color:var(--ink-dim);text-decoration:line-through}
+
+  .heat{display:grid;grid-template-rows:repeat(7,10px);grid-auto-flow:column;gap:3px}
+  .heat i{width:10px;height:10px;border-radius:2px;background:#242424;display:block}
+  .heat i.l1{background:#39306b}.heat i.l2{background:#5b48a0}.heat i.l3{background:#7259cc}.heat i.l4{background:var(--accent)}
+
+  /* loop stepper */
+  .stepper{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+  .step{flex:1;min-width:80px;border:1px solid var(--line);border-radius:var(--r);padding:8px 9px;font-size:10.5px;color:var(--ink-dim);background:var(--panel)}
+  .step .n{font-size:15px;color:var(--ink-faint);line-height:1;font-weight:700}
+  .step.on{border-color:var(--accent);background:var(--accent-soft)}
+  .step.on .n{color:var(--accent)} .step.on{color:var(--ink)}
+  .step.done .n{color:var(--accent-dim)}
+
+  .scratch{border:1px dashed var(--line-bright);border-radius:var(--r);background:var(--bg-2);padding:13px;min-height:96px;color:var(--ink-faint);font-size:12px;position:relative;font-family:var(--mono)}
+  .scratch .lbl{position:absolute;top:-8px;left:11px;background:var(--bg);padding:0 7px;font-size:10px;color:var(--accent);font-family:var(--ui)}
+
+  /* flashcard */
+  .card3d{border:1px solid var(--line-bright);border-radius:var(--r);background:var(--panel-3);padding:28px 20px;text-align:center;position:relative;min-height:150px;display:flex;flex-direction:column;justify-content:center;gap:13px}
+  .card3d .q{font-size:17px;color:var(--ink);font-weight:600}
+  .card3d .hint{font-size:10.5px;color:var(--ink-faint);letter-spacing:.06em}
+  .rate{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .rate .b{padding:9px;text-align:center;border-radius:var(--r-sm);font-size:11px;border:1px solid var(--line-bright);font-weight:600}
+  .rate .again{color:var(--red)} .rate .hard{color:var(--amber)} .rate .good{color:var(--green)} .rate .easy{color:var(--blue)}
+  .rate .b small{display:block;color:var(--ink-faint);font-size:9.5px;margin-top:3px;font-weight:400}
+
+  /* chat / tutor */
+  .msg{display:flex;gap:10px;margin-bottom:13px;font-size:12.5px;line-height:1.6}
+  .msg .av{width:26px;height:26px;border-radius:50%;flex:0 0 auto;display:grid;place-items:center;font-size:10px;font-weight:700}
+  .av.ai{background:rgba(0,191,188,0.15);color:var(--ai);border:1px solid var(--ai)}
+  .av.usr{background:var(--accent-soft);color:var(--accent);border:1px solid var(--accent-dim)}
+  .msg .body{flex:1}
+  .msg .who{font-size:10px;color:var(--ink-faint);margin-bottom:3px;font-weight:500}
+  .msg .bubble{color:var(--ink)}
+  .cite{border-left:2px solid var(--ai);background:rgba(0,191,188,0.07);padding:6px 10px;margin-top:7px;font-size:11px;color:var(--ink-dim);border-radius:0 var(--r-sm) var(--r-sm) 0}
+  .cite b{color:var(--ai)}
+
+  .field-lbl{font-size:11px;color:var(--ink-dim);display:block;margin-bottom:5px;font-weight:500}
+  .input{width:100%;background:var(--bg-2);border:1px solid var(--line);border-radius:var(--r-sm);color:var(--ink);padding:9px 11px;font-family:var(--ui);font-size:12.5px}
+  .input:focus{outline:none;border-color:var(--accent)}
+  .seg{display:inline-flex;border:1px solid var(--line-bright);border-radius:var(--r-sm);overflow:hidden}
+  .seg span{padding:7px 13px;font-size:11px;color:var(--ink-dim);border-right:1px solid var(--line)}
+  .seg span:last-child{border-right:none}
+  .seg span.on{background:var(--accent);color:#fff;font-weight:600}
+
+  /* dependency graph — Obsidian graph-view styling */
+  .graph{position:relative;height:150px}
+  .node{position:absolute;border:1px solid var(--line-bright);background:var(--panel-3);border-radius:999px;padding:6px 11px;font-size:10.5px;color:var(--ink)}
+  .node.done{border-color:var(--accent-dim);color:var(--accent);background:var(--accent-soft)}
+  .node.active{border-color:var(--accent);background:var(--accent);color:#fff;box-shadow:0 0 16px -3px var(--accent)}
+  .node.locked{color:var(--ink-faint)}
+  .edge{position:absolute;height:1.5px;background:var(--line-bright);transform-origin:left center}
+
+  .anno{border-left:3px solid var(--amber);background:rgba(224,167,46,0.07);padding:10px 13px;font-size:12px;color:var(--ink-dim);margin-top:11px;border-radius:0 var(--r-sm) var(--r-sm) 0}
+  .anno b{color:var(--amber)}
+
+  /* callout style note (very Obsidian) */
+  .callout{border:1px solid var(--line);border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:var(--r-sm);padding:11px 14px;font-size:12.5px;color:var(--ink-dim);margin-top:12px}
+  .callout b{color:var(--accent)}
+
+  /* wireframe frame */
+  .screen{border:1px solid var(--line-bright);border-radius:var(--r);overflow:hidden;background:var(--bg);box-shadow:0 24px 60px -34px rgba(0,0,0,0.8);margin-bottom:10px}
+  .screen-cap{display:flex;align-items:center;gap:10px;padding:9px 13px;background:var(--panel-2);border-bottom:1px solid var(--line)}
+  .screen-cap .dots{display:flex;gap:6px}
+  .screen-cap .dots i{width:10px;height:10px;border-radius:50%;background:var(--line-bright);display:block}
+  .screen-cap .ttl{font-size:11px;color:var(--ink-dim)}
+  .screen-cap .route{margin-left:auto;font-size:11px;color:var(--accent);font-family:var(--mono)}
+  .screen-body{padding:16px;background:var(--bg)}
+
+  /* app chrome */
+  .app{display:grid;grid-template-columns:194px 1fr;gap:0;min-height:0}
+  .rail{border-right:1px solid var(--line);background:var(--panel);padding:14px 0}
+  .rail .brand{display:flex;align-items:center;gap:10px;padding:0 15px 14px;border-bottom:1px solid var(--line);margin-bottom:10px}
+  .rail .gem{width:22px;height:22px;flex:0 0 auto;background:linear-gradient(145deg,#a78bfa,#6c4fd6);transform:rotate(45deg);border-radius:4px;box-shadow:0 0 12px -2px var(--accent);position:relative}
+  .rail .gem::after{content:"";position:absolute;inset:4px 4px auto auto;width:6px;height:6px;background:rgba(255,255,255,0.5);border-radius:1px}
+  .rail .brand b{font-size:14px;font-weight:700;color:var(--ink)}
+  .nav a{display:flex;align-items:center;gap:10px;padding:8px 15px;font-size:12.5px;color:var(--ink-dim);border-left:2px solid transparent;border-radius:0}
+  .nav a .ic{width:15px;text-align:center;opacity:.85}
+  .nav a.on{color:var(--accent);background:var(--accent-soft);border-left-color:var(--accent);font-weight:500}
+  .nav .grp{font-size:10px;color:var(--ink-faint);padding:13px 15px 5px;text-transform:uppercase;letter-spacing:.08em;font-weight:600}
+  .rail .footer{padding:12px 15px 0;margin-top:10px;border-top:1px solid var(--line);font-size:10.5px;color:var(--ink-faint);line-height:1.8;font-family:var(--mono)}
+
+  .main{padding:16px;min-width:0}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .topbar .crumbs{font-size:12px;color:var(--ink-dim)}
+  .topbar .crumbs b{color:var(--ink);font-weight:600}
+  .topbar .clock{font-size:15px;color:var(--amber);font-family:var(--mono);font-weight:500}
+
+  .col-2{display:grid;grid-template-columns:1.4fr 1fr;gap:13px}
+  .col-3{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+  .stack>*{margin-bottom:11px} .stack>*:last-child{margin-bottom:0}
+
+  .toc{position:fixed;top:18px;right:18px;z-index:50;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-size:11.5px;display:none}
+  @media(min-width:1380px){.toc{display:block}}
+  .toc a{display:block;color:var(--ink-dim);padding:3px 0}
+  .toc a:hover{color:var(--accent)}
+  .toc .h{color:var(--accent);font-weight:700;font-size:10px;margin-bottom:7px;text-transform:uppercase;letter-spacing:.1em}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-dim);margin-top:9px}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:2px;display:block}
+
+  .princ{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:11px}
+  .princ .p{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);padding:14px;border-top:2px solid var(--accent)}
+  .princ .p h4{font-size:12.5px;color:var(--ink);margin-bottom:6px;font-weight:600}
+  .princ .p p{font-size:11.5px;color:var(--ink-dim);line-height:1.55}
+</style>
+</head>
+<body>
+
+<nav class="toc">
+  <div class="h">◆ Screens</div>
+  <a href="#tokens">01 · Tokens</a>
+  <a href="#components">02 · Components</a>
+  <a href="#s-dashboard">03 · Command Center</a>
+  <a href="#s-course">04 · Course / Campaign</a>
+  <a href="#s-loop">05 · Daily Loop</a>
+  <a href="#s-srs">06 · SRS Review</a>
+  <a href="#s-tutor">07 · Feynman Tutor</a>
+  <a href="#s-gen">08 · Course Gen</a>
+  <a href="#s-settings">09 · AI Providers</a>
+</nav>
+
+<div class="doc-head">
+  <div class="wrap">
+    <div class="eyebrow">◆ CIC Learning Platform · Visual Design Language</div>
+    <h1>Design <b>System</b> & Wireframes — <b>Obsidian</b> Theme</h1>
+    <p>The same layout, screens, and component set as the tactical variant, reskinned in <b>Obsidian's</b> visual identity: soft charcoal surfaces, purple accent, rounded cards, Inter type, graph-view styling, purple wikilinks. This is the theme that visually harmonizes with the user's vault. Build it in React + Tailwind + Vite.</p>
+    <div class="meta">
+      <span class="pill on">Obsidian dark · purple accent</span>
+      <span class="pill on">Inter + JetBrains Mono</span>
+      <span class="pill">Soft 8px radius</span>
+      <span class="pill">Flat & calm</span>
+      <span class="pill">Wireframe — layout &amp; language, not final copy</span>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ===== 01 TOKENS ===== -->
+  <section id="tokens">
+    <div class="sec-label"><span class="num">01</span><h2>Design Tokens</h2><span class="rule"></span></div>
+    <p class="sec-note">CSS variables are the contract; map them to Tailwind theme tokens. Obsidian's identity is <b>charcoal + purple</b>. One important remap from the tactical theme: since purple is now the brand/primary (used for links, active states, primary actions — just like Obsidian's wikilinks), the <b>AI-output</b> marker moves to <b>cyan</b> so it stays visually distinct from the brand color. Color still carries meaning: purple = primary/links, green = live/healthy, amber = attention, red = cold/destructive, blue = info, cyan = AI.</p>
+
+    <h4 style="font-size:12px;color:var(--ink-dim);margin:0 0 11px;font-weight:600">▸ Surfaces &amp; lines</h4>
+    <div class="tok-grid" style="margin-bottom:18px">
+      <div class="swatch"><div class="chip" style="background:#1a1a1a"></div><div class="meta"><div class="nm">BG App</div><div class="hx">#1A1A1A</div><div class="var">--bg</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#151515"></div><div class="meta"><div class="nm">BG Sunken</div><div class="hx">#151515</div><div class="var">--bg-2</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#1e1e1e"></div><div class="meta"><div class="nm">Panel</div><div class="hx">#1E1E1E</div><div class="var">--panel</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#262626"></div><div class="meta"><div class="nm">Raised</div><div class="hx">#262626</div><div class="var">--panel-3</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#2c2c2c"></div><div class="meta"><div class="nm">Divider</div><div class="hx">#2C2C2C</div><div class="var">--line</div></div></div>
+    </div>
+
+    <h4 style="font-size:12px;color:var(--ink-dim);margin:0 0 11px;font-weight:600">▸ Accent &amp; semantic</h4>
+    <div class="tok-grid" style="margin-bottom:18px">
+      <div class="swatch"><div class="chip" style="background:#8b6cef"></div><div class="meta"><div class="nm">Purple</div><div class="hx">#8B6CEF · primary</div><div class="var">--accent</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#44cf6e"></div><div class="meta"><div class="nm">Green</div><div class="hx">#44CF6E · live</div><div class="var">--green</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#e0a72e"></div><div class="meta"><div class="nm">Amber</div><div class="hx">#E0A72E · attention</div><div class="var">--amber</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#fb464c"></div><div class="meta"><div class="nm">Red</div><div class="hx">#FB464C · cold/danger</div><div class="var">--red</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#4c8dff"></div><div class="meta"><div class="nm">Blue</div><div class="hx">#4C8DFF · info</div><div class="var">--blue</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#00bfbc"></div><div class="meta"><div class="nm">Cyan</div><div class="hx">#00BFBC · AI only</div><div class="var">--ai</div></div></div>
+    </div>
+
+    <h4 style="font-size:12px;color:var(--ink-dim);margin:0 0 11px;font-weight:600">▸ Domain accents (cycle for user domains)</h4>
+    <div class="tok-grid" style="margin-bottom:24px">
+      <div class="swatch"><div class="chip" style="background:#8b6cef"></div><div class="meta"><div class="nm">Domain 1</div><div class="var">--d1</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#4c8dff"></div><div class="meta"><div class="nm">Domain 2</div><div class="var">--d2</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#44cf6e"></div><div class="meta"><div class="nm">Domain 3</div><div class="var">--d3</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#e0a72e"></div><div class="meta"><div class="nm">Domain 4</div><div class="var">--d4</div></div></div>
+      <div class="swatch"><div class="chip" style="background:#fb464c"></div><div class="meta"><div class="nm">Domain 5</div><div class="var">--d5</div></div></div>
+    </div>
+
+    <h4 style="font-size:12px;color:var(--ink-dim);margin:0 0 11px;font-weight:600">▸ Typography</h4>
+    <div class="type-row"><div><div style="font-size:30px;font-weight:800;letter-spacing:-0.02em">Combat Information Center</div></div><div class="spec">Inter 800 · display / headers</div></div>
+    <div class="type-row"><div><div style="font-size:27px;font-weight:700;color:var(--accent);letter-spacing:-0.02em">94.2<span style="font-size:13px;color:var(--ink-dim);font-weight:500"> hrs</span></div></div><div class="spec">Inter 700 · stat readouts</div></div>
+    <div class="type-row"><div><div style="font-size:13.5px">Body copy, labels, and UI text — Inter, the calm sans Obsidian's UI evokes.</div></div><div class="spec">Inter 400/500 · body · 13.5px</div></div>
+    <div class="type-row"><div><div style="font-family:var(--mono);font-size:12.5px;color:var(--accent)">/CIC-Vault/B2 — Deep Learning.md</div></div><div class="spec">JetBrains Mono · code · paths · data</div></div>
+    <div class="callout"><b>◆ Note:</b> using Inter here is a deliberate fidelity choice — it mirrors Obsidian's own calm UI typography. (The tactical theme used Oswald + IBM Plex Mono for a terminal feel.)</div>
+  </section>
+
+  <!-- ===== 02 COMPONENTS ===== -->
+  <section id="components">
+    <div class="sec-label"><span class="num">02</span><h2>Core Components</h2><span class="rule"></span></div>
+    <p class="sec-note">The same component vocabulary as the tactical theme, restyled flat &amp; rounded. Panels are clean cards (no corner brackets, no hex grid) — calm and minimal, the way Obsidian feels. Tags become soft pills with tinted backgrounds (Obsidian's tag style). Wikilinks and active states are purple.</p>
+
+    <div class="panel-cards">
+      <div class="demo"><h4>▸ PANEL / CARD</h4>
+        <div class="hud-panel"><div class="ph"><h3>Panel Title</h3><span class="tag">status</span></div><div class="pb" style="font-size:12px;color:var(--ink-dim)">Clean rounded card with a header strip. No brackets — flat and calm.</div></div>
+      </div>
+      <div class="demo"><h4>▸ STAT CELL</h4>
+        <div class="stat-cell"><div class="k">Current Streak</div><div class="v green">17<small> days</small></div></div>
+      </div>
+      <div class="demo"><h4>▸ BUTTONS</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:8px"><button class="btn">Commit</button><button class="btn ghost">Cancel</button><button class="btn amber sm">Review</button><button class="btn violet sm">✦ Generate</button></div>
+      </div>
+      <div class="demo"><h4>▸ PROGRESS BAR</h4>
+        <div style="margin-bottom:8px"><div class="bar"><i style="width:72%;background:var(--accent)"></i></div></div>
+        <div class="bar"><i style="width:34%;background:var(--amber)"></i></div>
+      </div>
+      <div class="demo"><h4>▸ TAG PILLS</h4>
+        <div style="display:flex;flex-wrap:wrap;gap:7px"><span class="tagchip t-green">live</span><span class="tagchip t-amber">today</span><span class="tagchip t-red">cold</span><span class="tagchip t-cyan">math</span><span class="tagchip t-violet">✦ AI-draft</span></div>
+      </div>
+      <div class="demo"><h4>▸ STATUS DOTS</h4>
+        <div class="listrow"><span class="led dot-green"></span><span>Active front</span></div>
+        <div class="listrow"><span class="led dot-amber"></span><span>Due today</span></div>
+        <div class="listrow"><span class="led dot-cold"></span><span>Going cold (4d+)</span></div>
+      </div>
+      <div class="demo"><h4>▸ CHECKLIST</h4>
+        <div class="check done"><span class="box"></span><span>Retrieve from memory</span></div>
+        <div class="check"><span class="box"></span><span>Make spaced cards</span></div>
+      </div>
+      <div class="demo"><h4>▸ ACTIVITY HEATMAP</h4>
+        <div class="heat" style="grid-template-rows:repeat(7,10px)">
+          <i class="l1"></i><i></i><i class="l3"></i><i class="l2"></i><i class="l4"></i><i></i><i class="l1"></i>
+          <i class="l2"></i><i class="l4"></i><i class="l3"></i><i></i><i class="l2"></i><i class="l4"></i><i class="l1"></i>
+          <i class="l3"></i><i class="l1"></i><i class="l4"></i><i class="l3"></i><i></i><i class="l2"></i><i class="l3"></i>
+          <i></i><i class="l2"></i><i class="l1"></i><i class="l4"></i><i class="l3"></i><i class="l2"></i><i></i>
+        </div>
+      </div>
+      <div class="demo"><h4>▸ SEGMENTED</h4>
+        <div class="seg"><span class="on">Scaffold</span><span>Full-draft</span></div>
+      </div>
+      <div class="demo"><h4>▸ INPUT</h4>
+        <label class="field-lbl">Objective (capability)</label>
+        <input class="input" value="be able to derive backprop" readonly>
+      </div>
+      <div class="demo"><h4>▸ AI CITATION</h4>
+        <div class="cite"><b>◆ grounded:</b> Goodfellow §6.5 — verify before trusting.</div>
+      </div>
+      <div class="demo"><h4>▸ CALLOUT</h4>
+        <div class="callout" style="margin-top:0"><b>◆ tip:</b> Obsidian-style callout block.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 03 DASHBOARD ===== -->
+  <section id="s-dashboard">
+    <div class="sec-label"><span class="num">03</span><h2>Command Center (Dashboard)</h2><span class="rule"></span></div>
+    <p class="sec-note">Home / nerve center. Persistent left rail (Obsidian-style file-tree feel), status readout strip, working panels. Same IA as the tactical theme — only the skin changed.</p>
+    <div class="screen">
+      <div class="screen-cap"><div class="dots"><i></i><i></i><i></i></div><span class="ttl">CIC — Command Center</span><span class="route">/dashboard</span></div>
+      <div class="screen-body" style="padding:0">
+        <div class="app">
+          <aside class="rail">
+            <div class="brand"><div class="gem"></div><b>CIC</b></div>
+            <nav class="nav">
+              <a class="on"><span class="ic">⌂</span> Command Center</a>
+              <a><span class="ic">◆</span> Campaigns</a>
+              <a><span class="ic">▤</span> Courses</a>
+              <a><span class="ic">▸</span> Daily Loop</a>
+              <a><span class="ic">⊞</span> Review <span style="margin-left:auto;color:var(--amber)">12</span></a>
+              <a><span class="ic">✦</span> Tutor</a>
+              <div class="grp">Knowledge</div>
+              <a><span class="ic">◈</span> Vault</a>
+              <a><span class="ic">⟁</span> Graph</a>
+              <a><span class="ic">✚</span> Generate</a>
+              <div class="grp">System</div>
+              <a><span class="ic">⚙</span> AI Providers</a>
+              <a><span class="ic">◷</span> Settings</a>
+            </nav>
+            <div class="footer">LOCAL · OFFLINE-OK<br>VAULT ◆ /CIC-Vault<br>v0.1.0</div>
+          </aside>
+          <main class="main">
+            <div class="topbar">
+              <div class="crumbs">Operator status · <b>good morning, operator</b></div>
+              <div class="clock">08:42:17</div>
+            </div>
+            <div class="col-3" style="grid-template-columns:repeat(5,1fr);margin-bottom:13px">
+              <div class="stat-cell"><div class="k">Streak</div><div class="v green">17<small>d</small></div></div>
+              <div class="stat-cell"><div class="k">Longest</div><div class="v">31<small>d</small></div></div>
+              <div class="stat-cell"><div class="k">Total</div><div class="v cyan">94<small>h</small></div></div>
+              <div class="stat-cell"><div class="k">Due cards</div><div class="v amber">12</div></div>
+              <div class="stat-cell"><div class="k">Today</div><div class="v amber">0<small>m</small></div></div>
+            </div>
+            <div class="col-2">
+              <div class="stack">
+                <div class="hud-panel"><div class="ph"><h3>Today's Protocol</h3><span class="tag">resets 00:00</span></div><div class="pb">
+                  <div class="check done"><span class="box"></span><span>Set objective — "derive backprop"</span></div>
+                  <div class="check done"><span class="box"></span><span>Active study pass</span></div>
+                  <div class="check"><span class="box"></span><span>Retrieve from memory</span></div>
+                  <div class="check"><span class="box"></span><span>Atomic note + link</span></div>
+                  <div class="check"><span class="box"></span><span>Feynman self-test</span></div>
+                  <div class="check"><span class="box"></span><span>Make spaced cards</span></div>
+                  <div style="margin-top:12px"><button class="btn">▸ Resume Daily Loop</button></div>
+                </div></div>
+                <div class="hud-panel"><div class="ph"><h3>Activity — 12 Weeks</h3><span class="tag">show up</span></div><div class="pb">
+                  <div class="heat">
+                    <script>document.write(Array.from({length:84},()=>{const l=[0,0,1,2,2,3,4][Math.floor(Math.random()*7)];return l?`<i class="l${l}"></i>`:'<i></i>'}).join(''))</script>
+                  </div>
+                  <div class="legend"><span><i style="background:#242424"></i> less</span><span><i style="background:#5b48a0"></i></span><span><i style="background:var(--accent)"></i> more</span></div>
+                </div></div>
+              </div>
+              <div class="stack">
+                <div class="hud-panel"><div class="ph"><h3>Domain Allocation</h3><span class="tag">interleave</span></div><div class="pb">
+                  <div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:5px"><span style="color:var(--blue)">ML / DL</span><span style="color:var(--ink-dim)">last today</span></div><div class="bar"><i style="width:80%;background:var(--blue)"></i></div></div>
+                  <div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:5px"><span style="color:var(--accent)">Math</span><span style="color:var(--ink-dim)">2d ago</span></div><div class="bar"><i style="width:55%;background:var(--accent)"></i></div></div>
+                  <div><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:5px"><span style="color:var(--amber)">CS Theory</span><span style="color:var(--red)">6d — cold</span></div><div class="bar"><i style="width:22%;background:var(--amber)"></i></div></div>
+                  <div class="anno"><b>⚑ Interleave nudge:</b> CS Theory is going cold. Rotate it in today.</div>
+                </div></div>
+                <div class="hud-panel"><div class="ph"><h3>Recent Engagements</h3><span class="tag">log</span></div><div class="pb">
+                  <div class="listrow"><span class="led dot-green"></span><span style="color:var(--ink-dim);flex:0 0 52px">today</span><span style="color:var(--blue);flex:0 0 56px">ML/DL</span><span>Self-attention · 50m</span></div>
+                  <div class="listrow"><span class="led dot-green"></span><span style="color:var(--ink-dim);flex:0 0 52px">yest.</span><span style="color:var(--accent);flex:0 0 56px">Math</span><span>Eigenvectors · 45m</span></div>
+                  <div class="listrow"><span class="led dot-amber"></span><span style="color:var(--ink-dim);flex:0 0 52px">2d</span><span style="color:var(--blue);flex:0 0 56px">ML/DL</span><span>Backprop intro · 60m</span></div>
+                </div></div>
+              </div>
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+    <div class="callout"><b>◆ Build note:</b> the left rail + topbar are the persistent app shell; only the <code>.main</code> region swaps per route. Obsidian feel = flat surfaces, soft radius, purple active highlight, no scanlines or grid.</div>
+  </section>
+
+  <!-- ===== 04 COURSE ===== -->
+  <section id="s-course">
+    <div class="sec-label"><span class="num">04</span><h2>Course / Campaign View</h2><span class="rule"></span></div>
+    <p class="sec-note">A Course = an Obsidian MOC. Capability milestones, the dependency graph (styled like Obsidian's graph view — purple nodes, thin links), the linked MOC, resources, and spawned cards. Current objective is prominent — it feeds the Daily Loop.</p>
+    <div class="screen">
+      <div class="screen-cap"><div class="dots"><i></i><i></i><i></i></div><span class="ttl">Course — B2 Deep Learning from First Principles</span><span class="route">/courses/b2</span></div>
+      <div class="screen-body">
+        <div class="topbar">
+          <div class="crumbs">Campaign <b>CS + AI Fluency</b> › Track B › <b style="color:var(--accent)">B2 · Deep Learning</b></div>
+          <div><span class="tagchip t-cyan">ML/DL</span> <span class="tagchip t-violet" style="margin-left:5px">✦ generated</span></div>
+        </div>
+        <div class="col-2">
+          <div class="stack">
+            <div class="hud-panel"><div class="ph"><h3>Current Objective</h3><span class="tag">feeds the loop</span></div><div class="pb">
+              <div style="font-size:18px;color:var(--ink);font-weight:600;margin-bottom:5px">Implement backprop from scratch in a tiny autograd engine</div>
+              <div style="font-size:11.5px;color:var(--ink-dim)">Milestone 2 of 6 · prereqs met</div>
+              <div style="margin-top:12px;display:flex;gap:8px"><button class="btn">▸ Start Session</button><button class="btn ghost">Edit milestones</button></div>
+            </div></div>
+            <div class="hud-panel"><div class="ph"><h3>Capability Milestones</h3><span class="tag">2/6</span></div><div class="pb">
+              <div class="check done"><span class="box"></span><span>Build micrograd — scalar autograd</span></div>
+              <div class="check"><span class="box" style="border-color:var(--accent)"></span><span style="color:var(--ink)">Derive backprop as chain rule over a graph <span class="tagchip" style="margin-left:6px">active</span></span></div>
+              <div class="check"><span class="box"></span><span>Build char-level LM (makemore)</span></div>
+              <div class="check"><span class="box"></span><span>Build a GPT from scratch (nanoGPT)</span></div>
+              <div class="check"><span class="box"></span><span>Explain why attention is O(n²)</span></div>
+              <div class="check"><span class="box"></span><span>Training dynamics: init, norm, Adam</span></div>
+            </div></div>
+          </div>
+          <div class="stack">
+            <div class="hud-panel"><div class="ph"><h3>Dependency Map</h3><span class="tag">prereqs</span></div><div class="pb">
+              <div class="graph">
+                <div class="node done" style="left:0;top:8px">A1 · Linear Alg</div>
+                <div class="node done" style="left:0;top:62px">B1 · ML Found.</div>
+                <div class="node active" style="left:124px;top:35px">B2 · Deep Learning</div>
+                <div class="node locked" style="left:258px;top:8px">B4 · Frontier</div>
+                <div class="node locked" style="left:258px;top:62px">B3 · RL</div>
+                <div class="edge" style="left:88px;top:19px;width:44px;transform:rotate(20deg)"></div>
+                <div class="edge" style="left:88px;top:70px;width:46px;transform:rotate(-18deg)"></div>
+                <div class="edge" style="left:218px;top:44px;width:48px;transform:rotate(-20deg)"></div>
+                <div class="edge" style="left:218px;top:48px;width:48px;transform:rotate(18deg)"></div>
+              </div>
+            </div></div>
+            <div class="col-2" style="grid-template-columns:1fr 1fr;gap:11px">
+              <div class="hud-panel"><div class="ph"><h3>MOC</h3></div><div class="pb" style="font-size:11.5px"><span style="color:var(--accent);font-family:var(--mono)">B2 — Deep Learning.md</span><div style="color:var(--ink-faint);margin-top:5px">↳ open in vault</div></div></div>
+              <div class="hud-panel"><div class="ph"><h3>Cards</h3></div><div class="pb"><div class="v amber" style="font-size:23px;font-weight:700">8<small style="font-size:11px;color:var(--ink-dim);font-weight:500"> · 3 due</small></div></div></div>
+            </div>
+            <div class="hud-panel"><div class="ph"><h3>Resources</h3><span class="tag">sources</span></div><div class="pb" style="font-size:11.5px;color:var(--ink-dim);line-height:1.9">▸ Karpathy — Zero to Hero<br>▸ Goodfellow et al. — Deep Learning<br>▸ Vaswani — Attention Is All You Need</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 05 DAILY LOOP ===== -->
+  <section id="s-loop">
+    <div class="sec-label"><span class="num">05</span><h2>The Daily Loop (Session Flow)</h2><span class="rule"></span></div>
+    <p class="sec-note">The signature guided 7-step flow. Desirable difficulty is <em>enforced</em>: the retrieval scratchpad demands recall <b>before</b> the source is revealed. Step 3 shown.</p>
+    <div class="screen">
+      <div class="screen-cap"><div class="dots"><i></i><i></i><i></i></div><span class="ttl">Daily Loop — active session</span><span class="route">/loop/session</span></div>
+      <div class="screen-body">
+        <div class="stepper">
+          <div class="step done"><div class="n">1</div>Objective</div>
+          <div class="step done"><div class="n">2</div>Active study</div>
+          <div class="step on"><div class="n">3</div>Retrieve</div>
+          <div class="step"><div class="n">4</div>Note + link</div>
+          <div class="step"><div class="n">5</div>Feynman</div>
+          <div class="step"><div class="n">6</div>Cards</div>
+          <div class="step"><div class="n">7</div>Interleave</div>
+        </div>
+        <div class="col-2" style="grid-template-columns:1.5fr 1fr">
+          <div class="hud-panel"><div class="ph"><h3>Step 3 · Retrieve From Memory</h3><span class="tag" style="color:var(--amber)">source hidden</span></div><div class="pb">
+            <div style="font-size:12px;color:var(--ink-dim);margin-bottom:11px">Write everything you recall about <b style="color:var(--ink)">deriving backprop as the chain rule</b>. Don't peek — the struggle is the mechanism.</div>
+            <div class="scratch"><span class="lbl">Recall scratchpad</span>The gradient of the loss w.r.t. each node is the local derivative times the upstream gradient, accumulated backward through the graph…<span style="color:var(--accent)">▋</span></div>
+            <div style="margin-top:13px;display:flex;gap:8px;align-items:center">
+              <button class="btn">Reveal &amp; compare ▸</button>
+              <button class="btn ghost">Skip</button>
+              <span style="margin-left:auto;font-size:11px;color:var(--ink-faint);font-family:var(--mono)">⏱ 04:12</span>
+            </div>
+          </div></div>
+          <div class="stack">
+            <div class="hud-panel"><div class="ph"><h3>Session</h3></div><div class="pb" style="font-size:11.5px;color:var(--ink-dim);line-height:2">
+              <div>Course · <span style="color:var(--blue)">B2 Deep Learning</span></div>
+              <div>Objective · <span style="color:var(--ink)">derive backprop</span></div>
+              <div>Domain · <span style="color:var(--blue)">ML/DL</span></div>
+              <div>Elapsed · <span style="color:var(--amber)">04:12</span></div>
+            </div></div>
+            <div class="callout" style="margin-top:0"><b>⚑ Why hidden:</b> revealing the source before recall turns retrieval into rereading — the illusion of competence. The UI gates it on purpose.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 06 SRS ===== -->
+  <section id="s-srs">
+    <div class="sec-label"><span class="num">06</span><h2>SRS Review (Native FSRS)</h2><span class="rule"></span></div>
+    <p class="sec-note">Full in-app spaced repetition — no Anki. Retrieval-before-reveal enforced; four FSRS ratings drive scheduling. Clean, distraction-free review.</p>
+    <div class="screen">
+      <div class="screen-cap"><div class="dots"><i></i><i></i><i></i></div><span class="ttl">Review — 12 cards due</span><span class="route">/review</span></div>
+      <div class="screen-body">
+        <div style="max-width:560px;margin:0 auto">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px">
+            <span style="font-size:11.5px;color:var(--ink-dim)">Card 4 / 12 · <span style="color:var(--blue)">ML/DL</span></span>
+            <div class="bar" style="width:160px"><i style="width:33%;background:var(--accent)"></i></div>
+          </div>
+          <div class="card3d">
+            <div class="hint">front · recall before reveal</div>
+            <div class="q">Why do we scale attention scores by √dₖ?</div>
+            <div style="font-size:11px;color:var(--ink-faint)">— think, then reveal —</div>
+          </div>
+          <div style="text-align:center;margin:13px 0"><button class="btn ghost" style="width:100%">▾ Reveal Answer</button></div>
+          <div class="rate">
+            <div class="b again">Again<small>&lt;1m</small></div>
+            <div class="b hard">Hard<small>2d</small></div>
+            <div class="b good">Good<small>5d</small></div>
+            <div class="b easy">Easy<small>12d</small></div>
+          </div>
+          <div style="text-align:center;margin-top:11px;font-size:10.5px;color:var(--ink-faint);font-family:var(--mono)">FSRS · intervals update on rating</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 07 TUTOR ===== -->
+  <section id="s-tutor">
+    <div class="sec-label"><span class="num">07</span><h2>Feynman / Socratic Tutor</h2><span class="rule"></span></div>
+    <p class="sec-note">The AI interrogation panel. <b>All AI output is cyan-marked</b> (distinct from the purple brand accent). RAG-grounded: cites the user's own notes + sources and flags uncertainty in technical domains. Tutor, not oracle.</p>
+    <div class="screen">
+      <div class="screen-cap"><div class="dots"><i></i><i></i><i></i></div><span class="ttl">Tutor — Feynman mode · Self-Attention</span><span class="route">/tutor</span></div>
+      <div class="screen-body">
+        <div class="col-2" style="grid-template-columns:1fr 232px">
+          <div class="hud-panel" style="display:flex;flex-direction:column">
+            <div class="ph"><h3>✦ Feynman Interrogation</h3><span class="tag" style="color:var(--ai)">reasoning · local-llama</span></div>
+            <div class="pb" style="flex:1">
+              <div class="msg"><div class="av usr">OP</div><div class="body"><div class="who">Operator</div><div class="bubble">Attention lets each token look at every other token and average their values by how similar they are.</div></div></div>
+              <div class="msg"><div class="av ai">AI</div><div class="body"><div class="who">Tutor ✦</div><div class="bubble">Good start. But you said "similar" — similarity measured <i>how</i>, exactly? And what stops the values from blowing up as dₖ grows?
+                <div class="cite"><b>◆ grounded:</b> your note <i>Self-Attention</i> + Vaswani §3.2.1 — verify the scaling claim yourself.</div>
+              </div></div></div>
+              <div class="msg"><div class="av usr">OP</div><div class="body"><div class="who">Operator</div><div class="bubble">Dot product of query and key… and we divide by √dₖ to keep variance stable.</div></div></div>
+            </div>
+            <div style="border-top:1px solid var(--line);padding:12px 14px;display:flex;gap:9px">
+              <input class="input" placeholder="Explain it back…">
+              <button class="btn violet">Send</button>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="hud-panel"><div class="ph"><h3>Gaps Found</h3></div><div class="pb">
+              <div class="check"><span class="box" style="border-color:var(--amber)"></span><span style="font-size:11.5px">Define similarity precisely</span></div>
+              <div class="check"><span class="box" style="border-color:var(--amber)"></span><span style="font-size:11.5px">Why softmax, not raw scores?</span></div>
+              <div style="font-size:10.5px;color:var(--ink-faint);margin-top:9px">↳ written to session as tasks to chase</div>
+            </div></div>
+            <div class="hud-panel"><div class="ph"><h3>Grounding</h3></div><div class="pb" style="font-size:11px;color:var(--ink-dim);line-height:1.85">RAG context:<br><span style="color:var(--accent)">▸ Self-Attention.md</span><br><span style="color:var(--accent)">▸ Attention Is All You Need</span><br><br><span style="color:var(--ink-faint)">local embeddings · vault never left device</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 08 COURSE GEN ===== -->
+  <section id="s-gen">
+    <div class="sec-label"><span class="num">08</span><h2>Course Generation (F10)</h2><span class="rule"></span></div>
+    <p class="sec-note">Two input modes converging on the reviewable Blueprint. Target set <b>up front</b> (scope + depth). Scaffold pre-selected; Full-draft a deliberate, non-sticky switch. The Blueprint is shown before anything is written to the vault.</p>
+    <div class="screen">
+      <div class="screen-cap"><div class="dots"><i></i><i></i><i></i></div><span class="ttl">Generate — review blueprint</span><span class="route">/generate/review</span></div>
+      <div class="screen-body">
+        <div class="topbar" style="margin-bottom:15px">
+          <div style="display:flex;gap:8px">
+            <span class="tagchip t-violet">✦ from: Deep Learning.pdf</span>
+            <span class="tagchip t-dim">Mode B · ingestion</span>
+          </div>
+          <div style="display:flex;gap:11px;align-items:center">
+            <span style="font-size:11px;color:var(--ink-dim)">Target</span>
+            <div class="seg"><span>Course</span><span class="on">Campaign</span></div>
+            <div class="seg"><span>Overview</span><span class="on">Working</span><span>Mastery</span></div>
+          </div>
+        </div>
+        <div class="col-2" style="grid-template-columns:1fr 252px">
+          <div class="hud-panel"><div class="ph"><h3>Proposed Blueprint</h3><span class="tag" style="color:var(--ai)">draft · not yet written</span></div><div class="pb">
+            <div style="font-size:11.5px;color:var(--ink-dim);margin-bottom:11px">Resequenced into capability milestones — <b style="color:var(--amber)">not</b> the book's TOC. Edit anything before materializing.</div>
+            <div class="listrow"><span class="led dot-off"></span><span style="flex:0 0 20px;color:var(--ink-faint);font-family:var(--mono)">01</span><span>Be able to explain the perceptron &amp; loss <span class="tagchip t-cyan" style="margin-left:6px">ch.1–2</span></span></div>
+            <div class="listrow"><span class="led dot-off"></span><span style="flex:0 0 20px;color:var(--ink-faint);font-family:var(--mono)">02</span><span>Derive gradient descent by hand <span class="tagchip t-cyan" style="margin-left:6px">ch.4</span></span></div>
+            <div class="listrow"><span class="led dot-off"></span><span style="flex:0 0 20px;color:var(--ink-faint);font-family:var(--mono)">03</span><span>Implement backprop on a graph <span class="tagchip t-cyan" style="margin-left:6px">ch.6</span></span></div>
+            <div class="listrow"><span class="led dot-off"></span><span style="flex:0 0 20px;color:var(--ink-faint);font-family:var(--mono)">04</span><span>Build &amp; train an MLP <span class="tagchip t-cyan" style="margin-left:6px">ch.6–7</span></span></div>
+            <div style="margin-top:13px;display:flex;gap:8px"><button class="btn violet">✦ Materialize to Vault</button><button class="btn ghost">Regenerate</button><button class="btn ghost">+ Milestone</button></div>
+          </div></div>
+          <div class="stack">
+            <div class="hud-panel"><div class="ph"><h3>Generation Mode</h3></div><div class="pb">
+              <div class="seg" style="width:100%;margin-bottom:10px"><span class="on" style="flex:1;text-align:center">Scaffold</span><span style="flex:1;text-align:center">Full-draft</span></div>
+              <div style="font-size:11.5px;color:var(--ink-dim);line-height:1.6">Scaffold seeds <b style="color:var(--ink)">questions</b>, not answers. You write the notes — that's the learning.</div>
+            </div></div>
+            <div class="hud-panel"><div class="ph"><h3>Will Seed</h3></div><div class="pb" style="font-size:11.5px;color:var(--ink-dim);line-height:1.95">
+              <div>◷ 4 session objectives</div>
+              <div>⊞ 11 card fronts <span style="color:var(--ink-faint)">(no backs)</span></div>
+              <div>? 16 retrieval Qs</div>
+              <div>✦ 6 Feynman targets</div>
+            </div></div>
+            <div class="hud-panel"><div class="ph"><h3>Placement</h3></div><div class="pb" style="font-size:11.5px;color:var(--ink-dim)">Domain · <span style="color:var(--blue)">ML/DL</span><br>Campaign · <span style="color:var(--ink)">CS + AI Fluency</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 09 SETTINGS ===== -->
+  <section id="s-settings">
+    <div class="sec-label"><span class="num">09</span><h2>AI Providers (Settings)</h2><span class="rule"></span></div>
+    <p class="sec-note">Where the vendor-agnostic layer surfaces. Add providers, assign to roles, toggle local-only lockdown. Local providers tagged green, remote amber — privacy posture is glanceable.</p>
+    <div class="screen">
+      <div class="screen-cap"><div class="dots"><i></i><i></i><i></i></div><span class="ttl">Settings — AI Providers</span><span class="route">/settings/ai</span></div>
+      <div class="screen-body">
+        <div class="col-2" style="grid-template-columns:1fr 1fr">
+          <div class="stack">
+            <div class="hud-panel"><div class="ph"><h3>Configured Providers</h3><span class="tag">3</span></div><div class="pb">
+              <div class="listrow"><span class="led dot-green"></span><span style="flex:1">Ollama <span style="color:var(--ink-faint)">· localhost:11434</span></span><span class="tagchip t-green">local</span></div>
+              <div class="listrow"><span class="led dot-green"></span><span style="flex:1">LM Studio <span style="color:var(--ink-faint)">· :1234/v1</span></span><span class="tagchip t-green">local</span></div>
+              <div class="listrow"><span class="led dot-amber"></span><span style="flex:1">OpenRouter <span style="color:var(--ink-faint)">· key ◆ keychain</span></span><span class="tagchip t-amber">remote</span></div>
+              <div style="margin-top:12px"><button class="btn ghost sm">+ Add provider</button> <button class="btn ghost sm">Test connection</button></div>
+            </div></div>
+            <div class="hud-panel"><div class="ph"><h3>Local-Only Lockdown</h3><span class="tag" style="color:var(--green)">engaged</span></div><div class="pb">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:44px;height:24px;background:var(--accent);border-radius:999px;position:relative;flex:0 0 auto"><div style="width:18px;height:18px;background:#fff;border-radius:50%;position:absolute;right:3px;top:3px"></div></div>
+                <div style="font-size:11.5px;color:var(--ink-dim)">Vault content will <b style="color:var(--green)">never</b> be sent to remote providers. Embeddings + RAG stay on device.</div>
+              </div>
+            </div></div>
+          </div>
+          <div class="hud-panel"><div class="ph"><h3>Role Routing</h3><span class="tag">per-task</span></div><div class="pb">
+            <label class="field-lbl">Reasoning · deep tutoring</label>
+            <div class="input" style="display:flex;justify-content:space-between;margin-bottom:12px"><span>OpenRouter · claude</span><span style="color:var(--ink-faint)">↳ fallback: Ollama</span></div>
+            <label class="field-lbl">Drafting · cards &amp; questions</label>
+            <div class="input" style="margin-bottom:12px">Ollama · llama3.1:8b</div>
+            <label class="field-lbl">Embeddings · RAG <span style="color:var(--green)">(pinned local)</span></label>
+            <div class="input" style="margin-bottom:12px">Ollama · nomic-embed-text</div>
+            <div class="callout" style="margin-top:0"><b>◆ The mix:</b> reasoning can call a frontier model while embeddings stay local — so RAG over your vault never leaves the machine.</div>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== principles footer ===== -->
+  <section>
+    <div class="sec-label"><span class="num">◆</span><h2>Design Principles (carry into every screen)</h2><span class="rule"></span></div>
+    <div class="princ">
+      <div class="p"><h4>Calm, not loud</h4><p>Obsidian's restraint: flat surfaces, soft radius, generous breathing room. Information-dense but never noisy.</p></div>
+      <div class="p"><h4>Color = meaning</h4><p>Purple primary/links · green live · amber attention · red cold · blue data · <span style="color:var(--ai)">cyan = AI only</span>. Never decorative.</p></div>
+      <div class="p"><h4>Enforce the hard parts</h4><p>UI gates recall before reveal, surfaces cold domains, refuses to mark things "learned" for free. The friction is the feature.</p></div>
+      <div class="p"><h4>AI is visibly AI</h4><p>Generated content is cyan-tagged and grounded with citations. The user always knows what the machine produced.</p></div>
+      <div class="p"><h4>Feels like the vault</h4><p>Purple wikilink accent, graph-view nodes, callouts, tag pills — the app visually continues Obsidian rather than clashing with it.</p></div>
+      <div class="p"><h4>Local &amp; private by default</h4><p>Lockdown state is glanceable. Local = green, remote = amber. Privacy posture is never hidden.</p></div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

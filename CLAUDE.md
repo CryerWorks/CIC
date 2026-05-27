@@ -93,7 +93,7 @@ src-tauri/                # Rust shell + plugin config + capabilities allowlist
 
 ## Conventions
 - **TypeScript strict**; no `any` (use `unknown` + narrowing). Prefer explicit types on public boundaries.
-- **React**: function components + hooks; no class components. Tailwind for styling; reuse the war-room HUD aesthetic (dark, monospaced readouts, corner brackets, domain accents).
+- **React**: function components + hooks; no class components. Tailwind for styling; visual design follows the **Obsidian theme** — see [CIC-Design-Language-Obsidian.html](CIC-Design-Language-Obsidian.html) (canonical). Inter + JetBrains Mono, soft 8px radius, charcoal surfaces, **purple primary**, **cyan for AI output only — never reverse**. The war-room HUD aesthetic (hex grid, corner brackets, scanlines, boot sequence) is NOT carried over — only its IA + component vocabulary (panels, stat cells, heatmap, stepper, checklist, dependency graph).
 - **Validation**: parse all external/Frontmatter/AI-JSON input through **zod** schemas; never trust raw frontmatter or model output shape.
 - **Errors**: handle explicitly; AI/provider calls and vault/FS ops must fail gracefully (offline, bad parse, locked file). Never crash on a malformed note.
 - **No scattered prompts or model names**: prompts in `src/ai/prompts/`, model/routing in config.
