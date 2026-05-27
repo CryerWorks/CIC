@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   CIC Obsidian design tokens (Feature 002)
+   Canonical source: CIC-Design-Language-Obsidian.html.
+   Dark-first. Tokens are role-named so a future light theme is a second
+   value-set for the same roles — components never reference raw values.
+   ========================================================================= */
+@theme {
+  /* ===== surfaces ===== */
+  --color-surface: #1a1a1a;
+  --color-surface-sunken: #151515;
+  --color-panel: #1e1e1e;
+  --color-panel-header: #222222;
+  --color-panel-raised: #262626;
+
+  /* ===== lines ===== */
+  --color-line: #2c2c2c;
+  --color-line-bright: #3a3a3a;
+
+  /* ===== brand (purple) — links / active / primary ===== */
+  --color-brand: #8b6cef;
+  --color-brand-dim: #5b48a0;
+  --color-brand-soft: rgba(139, 108, 239, 0.14);
+
+  /* ===== AI (cyan) — AI OUTPUT ONLY. Never used for brand/interactive. ===== */
+  --color-ai: #00bfbc;
+
+  /* ===== semantic ===== */
+  --color-success: #44cf6e;
+  --color-warn: #e0a72e;
+  --color-danger: #fb464c;
+  --color-info: #4c8dff;
+
+  /* ===== text ===== */
+  --color-text: #dadada;
+  --color-text-dim: #9a9a9a;
+  --color-text-faint: #666666;      /* large / decorative only — fails AA at body size */
+  --color-text-faint-aa: #8a8a8a;   /* use when faint-weight text must carry info (>=4.5:1) */
+
+  /* ===== domain accent cycle ===== */
+  --color-domain-1: #8b6cef;
+  --color-domain-2: #4c8dff;
+  --color-domain-3: #44cf6e;
+  --color-domain-4: #e0a72e;
+  --color-domain-5: #fb464c;
+
+  /* ===== radius ===== */
+  --radius-sm: 5px;
+  --radius-md: 8px;   /* Obsidian soft radius (the common default) */
+  --radius-full: 999px;
+
+  /* ===== fonts (self-hosted via Fontsource — see styles/fonts.ts) ===== */
+  --font-ui: "Inter Variable", -apple-system, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  /* ===== type scale (base 13.5px / 1.55) ===== */
+  --text-2xs: 10px;
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-base: 13.5px;
+  --text-md: 14px;
+  --text-lg: 17px;
+  --text-xl: 21px;
+  --text-2xl: 27px;
+  --text-3xl: 40px;
+}
+
+/* Spacing: Tailwind's default 4px-step scale is retained (no custom scale). */
+
+@layer base {
+  body {
+    margin: 0;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4 {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  code, pre {
+    font-family: var(--font-mono);
+  }
+  a {
+    color: var(--color-brand);
+    text-decoration: none;
+  }
+}
+
+/* Calm by intent: honor the OS reduced-motion preference globally. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

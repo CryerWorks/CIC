@@ -66,8 +66,8 @@ The user owns all git operations. **No task in this list runs git.** Where the s
 - [X] T013 [P] [US1] Verify `src/main.tsx` mounts `<App />` via React `createRoot` into the `#root` element in `index.html` (scaffold default — adjust only if needed). (FR-002)
 - [X] T014 [P] [US1] Write `src/App.test.tsx`: a Vitest + Testing Library smoke test that renders `<App />` and asserts the placeholder marker string from T012 is in the document. (FR-002; command contract; research R6)
 - [X] T015 [US1] Run `npm run test` and confirm the App smoke test passes. (FR-002 verification)
-- [ ] T016 [US1] Run `npm run tauri dev`; confirm **exactly one** native window opens and displays the placeholder marker (not zero, not multiple), within ~10s on a warm run. (FR-001; SC-002; command/window-lifecycle contract)
-- [ ] T017 [US1] With `tauri dev` running, edit the marker text in `src/App.tsx`, save, and confirm the window reflects the change within ~3s with no manual shell restart. Revert the edit. (FR-003; SC-003)
+- [X] T016 [US1] Run `npm run tauri dev`; confirm **exactly one** native window opens and displays the placeholder marker (not zero, not multiple), within ~10s on a warm run. (FR-001; SC-002; command/window-lifecycle contract)
+- [X] T017 [US1] With `tauri dev` running, edit the marker text in `src/App.tsx`, save, and confirm the window reflects the change within ~3s with no manual shell restart. Revert the edit. (FR-003; SC-003)
 
 **Checkpoint**: The window opens, renders the placeholder, the smoke test is green, and HMR works — Feature 001's MVP is delivered.
 
@@ -81,7 +81,7 @@ The user owns all git operations. **No task in this list runs git.** Where the s
 
 ### Implementation for User Story 2
 
-- [ ] T018 [US2] With `npm run tauri dev` running, close the window (window X), then inspect processes (e.g. PowerShell `Get-Process node, cic, msedgewebview2 -ErrorAction SilentlyContinue`) and confirm **zero** orphaned processes attributable to the app remain. If orphans survive, capture the offending process and the Rust shell logs before treating the story as failed. (FR-004; SC-004; window-lifecycle contract)
+- [X] T018 [US2] With `npm run tauri dev` running, close the window (window X), then inspect processes (e.g. PowerShell `Get-Process node, cic, msedgewebview2 -ErrorAction SilentlyContinue`) and confirm **zero** orphaned processes attributable to the app remain. If orphans survive, capture the offending process and the Rust shell logs before treating the story as failed. (FR-004; SC-004; window-lifecycle contract)
 
 **Checkpoint**: Open → close leaves a clean process table. US1 and US2 both verified independently.
 
@@ -92,7 +92,7 @@ The user owns all git operations. **No task in this list runs git.** Where the s
 **Purpose**: Confirm the build path and the contributor experience hold up, and leave the tree green.
 
 - [X] T019 [P] Run `npm run build` and confirm it typechecks (tsc) and produces a frontend build with no errors (smoke-level; packaging/signing is out of scope). (command contract)
-- [ ] T020 [P] Walk [quickstart.md](quickstart.md) top-to-bottom as if a fresh contributor: confirm the documented single command path (prereqs → `npm install` → `npm run tauri dev` → window) is accurate and the entry point is discoverable without asking. Fix any drift in quickstart.md. (SC-001, SC-005)
+- [X] T020 [P] Walk [quickstart.md](quickstart.md) top-to-bottom as if a fresh contributor: confirm the documented single command path (prereqs → `npm install` → `npm run tauri dev` → window) is accurate and the entry point is discoverable without asking. Fix any drift in quickstart.md. (SC-001, SC-005)
 - [X] T021 Confirm the working tree is green: `npm run test` passes and `npm run lint` (if a lint script exists post-scaffold) reports clean. (Constitution quality gate)
 - [X] T022 Prepare the end-of-feature walkthrough notes (what was scaffolded, the FR→verification results, the three flagged plan decisions as resolved) for the user-led review before merge. (SOP: mandatory end-of-feature walkthrough)
 

@@ -1,21 +1,9 @@
-import "./App.css";
+import { StyleGuide } from "./styleguide/StyleGuide";
 
-// Feature 001 — static placeholder only. No Tauri command invocation, no theme,
-// no chrome, no routing (those arrive in Features 002+). This component exists to
-// prove the React app renders inside the Tauri webview.
-const APP_NAME = "CIC";
-const VERSION = "0.1.0";
-
+// Feature 002 — the app's root view is the living StyleGuide (the design reference).
+// No router yet (Feature 004); when routing lands, the StyleGuide becomes the /style route.
 function App() {
-  return (
-    <main className="container">
-      <h1>{APP_NAME}</h1>
-      <p>hello — the desktop shell is running.</p>
-      <p>
-        Feature 001 · Tauri + React + Vite · v{VERSION}
-      </p>
-    </main>
-  );
+  return <StyleGuide />;
 }
 
 export default App;

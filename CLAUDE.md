@@ -140,5 +140,5 @@ Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root (both created
 **Definition of done:** a native desktop window showing the ported HUD, reading/writing local SQLite.
 
 <!-- SPECKIT START -->
-**Active feature:** `001-tauri-shell` — see [specs/001-tauri-shell/plan.md](specs/001-tauri-shell/plan.md) for the implementation plan (Tauri 2 + React + Vite scaffold), plus `research.md`, `data-model.md`, `contracts/`, and `quickstart.md` in that folder.
+**Active feature:** `002-design-system` — see [specs/002-design-system/plan.md](specs/002-design-system/plan.md) for the implementation plan (Tailwind v4 Obsidian token theme + self-hosted fonts + 16-primitive component kit + living StyleGuide), plus `research.md`, `data-model.md`, `contracts/tokens.md`, `contracts/components.md`, and `quickstart.md` in that folder. (`001-tauri-shell` — the Tauri + React + Vite shell — is complete.)
 <!-- SPECKIT END -->
