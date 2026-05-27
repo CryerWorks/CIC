@@ -21,20 +21,28 @@ export default tseslint.config(
       "jsx-a11y/aria-role": ["error", { ignoreNonDOM: true }],
       // Constitution II/IV: vendor AI SDKs may be imported ONLY inside src/ai/adapters/*.
       // Dormant today (no src/ai yet), wired now so the quality gate is real going forward.
+      // Feature 003: the SQLite native bridge (@tauri-apps/plugin-sql) is confined the same
+      // way — it may be imported ONLY inside src/db/adapters/* (the production SqlExecutor
+      // adapter), so the rest of the data layer depends on the seam, never the plugin.
       "no-restricted-imports": [
         "error",
         {
           paths: [
             { name: "openai", message: "Vendor AI SDKs may only be imported inside src/ai/adapters/*." },
             { name: "@anthropic-ai/sdk", message: "Vendor AI SDKs may only be imported inside src/ai/adapters/*." },
+            { name: "@tauri-apps/plugin-sql", message: "The SQL plugin may only be imported inside src/db/adapters/* — depend on the SqlExecutor seam instead." },
           ],
         },
       ],
     },
   },
-  // The adapters layer is the one place vendor SDKs are allowed.
+  // The adapters layers are the one place their respective bridges may be imported.
   {
     files: ["src/ai/adapters/**/*.{ts,tsx}"],
+    rules: { "no-restricted-imports": "off" },
+  },
+  {
+    files: ["src/db/adapters/**/*.{ts,tsx}"],
     rules: { "no-restricted-imports": "off" },
   },
 );

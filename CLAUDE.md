@@ -140,5 +140,5 @@ Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root (both created
 **Definition of done:** a native desktop window showing the ported HUD, reading/writing local SQLite.
 
 <!-- SPECKIT START -->
-**Active feature:** `002-design-system` — see [specs/002-design-system/plan.md](specs/002-design-system/plan.md) for the implementation plan (Tailwind v4 Obsidian token theme + self-hosted fonts + 16-primitive component kit + living StyleGuide), plus `research.md`, `data-model.md`, `contracts/tokens.md`, `contracts/components.md`, and `quickstart.md` in that folder. (`001-tauri-shell` — the Tauri + React + Vite shell — is complete.)
+**Active feature:** `003-sqlite-data-layer` — see [specs/003-sqlite-data-layer/plan.md](specs/003-sqlite-data-layer/plan.md) for the implementation plan (tauri-plugin-sql + TS migration runner + full PRD §8 17-table schema + zod models, behind a testable `SqlExecutor` seam — the `src/db/` Pocock spine), plus `research.md`, `data-model.md`, `contracts/db-interface.md`, `contracts/migration-contract.md`, and `quickstart.md` in that folder. (`001-tauri-shell` and `002-design-system` are complete.)
 <!-- SPECKIT END -->
