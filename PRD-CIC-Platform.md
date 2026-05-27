@@ -1,5 +1,5 @@
 # PRD — Combat Information Center (CIC) Learning Platform
-### Initial Specification for Claude Code · v0.6
+### Initial Specification for Claude Code · v0.7
 
 > **Codename:** CIC (working title — built on the `war-room-2026` foundation). Rename freely.
 > **Purpose of this document:** a build-ready spec to hand to Claude Code. It defines the vision, the architecture decision that everything hinges on, the data model, the feature set, and a phased migration plan from the existing `war-room-2026` repo.
@@ -13,6 +13,8 @@
 > **Locked in v0.5:** Desktop shell is **Tauri** (React + Vite frontend; TS-friendly native plugins) — §6. SRS is **native FSRS, fully in-app** — no Anki dependency (F3). Project is **non-commercial and will be released open source on GitHub** (§14); Tauri adoption moves to Phase 0 (§12).
 >
 > **Locked in v0.6:** New feature **F11 Projects: Applied Practice** (§9) — optional applied-practice artifact per Course, **multi-milestone** (1..N Milestones' capability applied to one concrete problem), with a mandatory frontmatter wrapper + per-domain freeform body templates. Closes the *transfer / application* mechanism gap (§15). Data model extended (§8); Course Blueprint IR gains `projectSeeds[]` (F10 / Phase 3.5). Locked sub-decisions: single-Course only (cross-Course handled by Bridges), no auto-grading (§14), Phase 2 ships manual MVP before AI augmentation.
+>
+> **Locked in v0.7:** Cog-psych additions closing three more gaps in §15 — **F2 pretest step** (errorful generation before active study; Daily Loop becomes 8-step), **F3.5 calibration** (confidence ratings on reviews surfacing overconfidence — the illusion of competence the PRD already cites), and **variability of surface form** as a design requirement on F5/F6/F10 (Schmidt & Bjork: variability complements interleaving). Vault contract tightened: **F1 MOC body template locked** with app-managed sections (no Dataview dependency), **F7 backlinks consumption** added (read, not just write), **block-ref citations** in cards (jump-to-paragraph on review), **vault subfolder support** (§6 — CIC can live under `Learning/` in a larger vault), and a concrete **conflict resolution UX** in §13 (detect via mtime+hash, 3-way diff dialog, no-clobber while open).
 
 ---
 
@@ -103,6 +105,8 @@ This is the load-bearing choice. The two hard requirements — **(a) the Obsidia
 
 **Fully-local commitment (locked):** no cloud backend exists for storage, accounts, or sync. The app is launched and run entirely on the user's machine. The vault is **required** — on first run the app asks the user to point at an existing Obsidian vault folder (or scaffold a new one), and that folder is the knowledge root from then on. The app must be a *good citizen* of that vault: never destructive, tolerant of Obsidian being open concurrently, and writing only well-formed Markdown a human would be happy to see.
 
+**Vault root vs subfolder (locked v0.7):** users can point CIC at either a vault root *or* a subfolder of an existing vault. The app tracks `vaultPath` (the folder it operates in) and `vaultRoot` (the Obsidian vault root, walking up to find `.obsidian/`). All vault reads/writes are scoped to `vaultPath` — CIC never reads or writes outside it. Obsidian's `.obsidian/` config dir is detected from the root but never modified. This lets users keep one Obsidian vault for their whole life and have CIC live in e.g. `Learning/` without taking over the vault.
+
 ### Hybrid storage model (the key pattern)
 
 Not everything belongs in Markdown. Split by data nature:
@@ -162,10 +166,12 @@ The app keeps SQLite and the vault in sync: it **reads** MOC frontmatter to lear
 - `milestones(id, course_id, capability, status, order)`
 - `sessions(id, course_id, project_id?, date, objective, minutes, did_retrieval, writeup_path)` — `project_id` is a nullable FK (most sessions don't link to a Project)
 - `cards(id, course_id, note_path, project_id?, front, back, fsrs_state JSON, due_at, last_reviewed)` — `project_id` is nullable (cards may be spawned from a Project's close-reflection)
-- `reviews(id, card_id, rating, reviewed_at, elapsed_ms)`
+- `reviews(id, card_id, rating, confidence?, reviewed_at, elapsed_ms)` — `confidence` ∈ 1..5 (nullable for backward compat); used to surface overconfident cards (F3.5)
 - `streaks(date, minutes, domains_touched JSON)`
 - `projects(id, course_id, capability, status, opened_at, closed_at, project_path, template?)` — `project_path` links to the vault file; `status` ∈ `open` / `in-progress` / `complete` / `abandoned`
 - `project_milestones(project_id, milestone_id)` — M:N; a Project applies 1..N Milestones' capability
+- `vault_writes(file_path, app_mtime, app_hash)` — written by the app *after* a successful `VaultWriter` write; the file watcher compares OS mtime + body hash against this to detect Obsidian-modified-since-app (drives the §13 conflict UX)
+- `pretest_responses(session_id, question, user_response, revealed_after)` — captures the pretest answers (F2.5); used in the session writeup's "what you thought vs what's true" comparison
 
 ### Vector store
 - `chunks(id, note_path, text, embedding, source_kind)` — for RAG over the vault + ingested sources.
@@ -213,16 +219,34 @@ The tracking layer (dashboard, calendar, streaks, cascading completion) is inher
 ### F1 — Course Authoring (manual)
 Create user-defined courses with capability milestones, resources, and dependencies by hand. Writing a course **generates/updates its MOC Markdown file** in the vault (frontmatter + body). Editing the MOC in Obsidian directly is reflected back on next sync. Supports the Campaign → Course → Milestone hierarchy. *(For AI-assisted creation — conversational or from a document — see **F10**, which produces a Course Blueprint that materializes through this same path.)*
 
+**MOC body template (locked v0.7).** Every Course MOC has a fixed body structure so dashboards, scheduler, and AI features can rely on it:
+
+```markdown
+## Capability
+<one paragraph — what does completing this Course prove the user can do?>
+
+## Milestones        <!-- cic:milestones --> ... <!-- /cic:milestones -->
+## Resources         <!-- cic:resources --> ... <!-- /cic:resources -->
+## Active Projects   <!-- cic:projects --> ... <!-- /cic:projects -->
+## Recent Sessions   <!-- cic:sessions --> ... <!-- /cic:sessions -->
+## Notes             <!-- cic:notes --> ... <!-- /cic:notes -->
+## Reflections       <!-- user-only — app never writes here -->
+```
+
+The HTML comment markers (`<!-- cic:milestones -->`) delimit **app-managed sections** that the app re-renders on every sync. Content *outside* the markers — including the entire `## Reflections` section — is user-owned and never overwritten. This contract means the app never needs Dataview to render dynamic lists; plain Obsidian shows a working MOC out of the box (see F7).
+
 ### F2 — The Daily Loop (guided session flow)
-A first-class, step-guided session implementing the 7-step protocol:
-`objective → active study → retrieve from memory → atomic note + link → self-test/Feynman → make cards → schedule interleave`.
+A first-class, step-guided session implementing the 8-step protocol (v0.7):
+`objective → pretest → active study → retrieve from memory → atomic note + link → self-test/Feynman → make cards → schedule interleave`.
 The flow:
 - prompts for a **capability-phrased objective**,
-- provides a **retrieval scratchpad** (write from memory before revealing source),
+- **F2.5 pretest step** — before opening the source, the app presents 2-4 pretest questions on the objective (seeded from prior session writeups, milestone capabilities, or AI-generated from the source's table of contents *without* revealing content). The user attempts answers from intuition or prior knowledge. **Wrong answers are expected and beneficial** — errorful generation primes encoding (Roediger & Karpicke; Kornell et al.). Answers are logged to `pretest_responses` and surfaced in the session writeup as a "what you thought vs what's true" comparison. *Never graded, never scored — the value is in the attempt.*
+- opens the source for **active study**,
+- provides a **retrieval scratchpad** for post-study recall (write from memory before re-opening the source — distinct from pretest: this is *corrective* retrieval, not errorful generation),
 - opens a **note editor** that writes an atomic Markdown note into the vault with backlinks,
 - launches the **Feynman/quiz** panel (F4/F5),
 - offers **AI-drafted cards** for confirmation (F3),
-- logs the session to SQLite + writes a **session writeup** note to the vault.
+- logs the session to SQLite + writes a **session writeup** note to the vault (including the pretest comparison).
 
 ### F3 — Built-in Spaced Repetition (SRS) — LOCKED (native, centralized)
 A fully **native** flashcard system so the user never leaves the platform — Anki is not required, not installed, not a dependency. Retention lives where the courses, notes, and sessions already are.
@@ -231,6 +255,8 @@ A fully **native** flashcard system so the user never leaves the platform — An
 - **AI-assisted card generation**: select a note → AI drafts atomic Q/A cards (user edits/approves; never auto-committed; respects the F10.5 scaffold guardrail).
 - Full in-app review UI: due queue, rating buttons, retrieval-before-reveal enforced, cloze + image-occlusion card types.
 - Daily review reminder via native notification (Tauri).
+- **F3.5 Calibration (v0.7)** — every card review collects a **confidence rating (1-5)** alongside the FSRS effort rating. The dashboard surfaces **overconfident cards** (high confidence + "again"/incorrect rating) — these are where the *illusion of competence* concentrates (Dunlosky et al.; same literature §3 principle 1 cites). Calibration is also prompted inline on F5 quizzes (in-session feedback only; not persisted in v1). Over time, the user develops accurate self-knowledge of what they know vs. think they know — a metacognitive skill the system *trains by collecting*, not by teaching.
+- **F3.6 Block-ref citations (v0.7)** — cards that cite a source note use Obsidian block references (`[[note#^block-id]]`) rather than note-level links. On review, clicking the citation jumps to the exact paragraph. The card-generation AI inserts `^block-id` markers in the source note when drafting, idempotent across regenerations. See F7 for block-id management.
 - *Optional, non-core (future):* a one-way export to Anki for users who already live there. Not a V1 concern and explicitly **not** a reason to split the workflow — the platform is the home for review.
 
 ### F4 — AI Feynman / Socratic Interrogation
@@ -242,18 +268,23 @@ The headline AI feature. The user explains a concept; the AI plays the probing b
 ### F5 — Retrieval Practice Quizzes
 On demand or scheduled, the AI generates retrieval questions from a note/course (ordered easy→hard, answers withheld until response). Results can spawn cards (F3) for missed items. Distinct from SRS: this is generative active recall over recent material.
 
+**Variability of surface form (locked v0.7).** Retrieval Qs vary across sessions in *surface form*, not just *order*: different problem framings, different examples, different contexts pointing at the same underlying concept. F10's Course Generator produces **3-5 surface-form variants per `retrievalQs[]` entry** in the Blueprint; the F6 scheduler picks one variant per session. This complements F6's interleaving (Schmidt & Bjork: interleaving handles *order*, variability handles *context* — both reduce contextual interference; both drive transfer). Especially important for math (same theorem in different problem framings) and language (same grammar in different sentences).
+
 ### F6 — Interleaving Scheduler / Desirable-Difficulty Engine
 The mechanism that enforces the method.
 - Surfaces **cold courses/domains** (not touched in N days) and nudges rotation.
 - Distributes review load (spacing) rather than batching.
 - Suggests a **daily mix** drawing from multiple domains per the two-track interleave model.
 - Respects course **dependencies** (won't suggest a course whose prereqs are unmet).
+- **Pairs interleaving (order) with variability (surface form, F5).** The scheduler not only varies *which* course/concept is next but, on a given concept, picks a *different surface-form variant* from the ones generated by F10. Together these are the two halves of Schmidt & Bjork's "variability of practice" — both reduce contextual interference and drive transfer.
 
 ### F7 — Knowledge Layer (vault integration)
 - Read/write atomic Markdown notes with `[[wikilinks]]`.
-- **MOC auto-index** replicating the Dataview queries currently used (list concepts by domain, "going cold", bridges, open questions).
+- **Backlinks consumption (locked v0.7).** The app builds its own backlink index by scanning all vault files on startup + incrementally on file-watcher events (does **not** depend on Obsidian's internal cache). Every Concept Note view in the dashboard shows backlinks: which Cards, Sessions, Projects, and Bridges reference this concept. Used by F4 (Feynman tutor seeds questions from how a concept is *used*, not just defined) and by F6 (a concept with no recent backlinks gets surfaced as cold).
+- **MOC auto-index (revised v0.7).** The app writes structured sections into MOCs between HTML comment markers (`<!-- cic:milestones -->` etc., see F1's MOC body template) — replicating common queries (list concepts by domain, "going cold", bridges, open questions, active Projects, recent Sessions). **The app does NOT depend on the Dataview plugin.** MOCs render natively in plain Obsidian out of the box. Users who happen to have Dataview installed can add their own queries in user-owned sections; the app never touches those.
+- **Block-id management (v0.7).** When the AI generates cards citing a source note (F3.6), it inserts `^block-id` markers in the source note at paragraph boundaries. IDs are deterministic (hash of paragraph content) so regenerations are idempotent — no duplicate `^abc123 ^abc123` build-up. The `VaultWriter` does this inline as part of the card-generation transaction.
 - A **graph view** of note links (cross-domain bridges highlighted).
-- Two-way sync with file-watcher; conflict handling when Obsidian edits the same file (§13).
+- Two-way sync with file-watcher; conflict handling when Obsidian edits the same file (see the concrete UX in §13).
 
 ### F8 — Command Center Dashboard (inherited + extended)
 HUD dashboard: live status, current/longest streak, today's protocol checklist, 12-week activity heatmap, per-domain allocation with cold-flags, recent sessions, due-cards count. This is the war-room dashboard generalized + fed by real vault/SRS data instead of `localStorage`.
@@ -485,7 +516,11 @@ Domain-tagged confidence policy; mandatory source citation in technical domains;
 2. **Vector store pick:** `sqlite-vec` (keeps everything in the SQLite file, simplest) vs `LanceDB` (richer ANN features). Low-stakes; default to `sqlite-vec` unless scale demands otherwise.
 
 **Risks:**
-3. **Vault write conflicts:** Obsidian may have the same file open. Need a file-watcher + last-write-wins or merge strategy, and care to never clobber user edits. **Highest-risk integration point.**
+3. **Vault write conflicts:** Obsidian may have the same file open. **Highest-risk integration point.** Concrete UX (locked v0.7):
+   - **Detect.** After every successful `VaultWriter` write, store `(file_path, app_mtime, app_hash)` in the SQLite `vault_writes` table. On every read/write, compare current OS mtime + body hash against the stored values. Mismatch ⇒ Obsidian (or something else) edited the file.
+   - **React.** When mismatch is detected on a *write* path, the app does **not** clobber — it opens a 3-way diff dialog: *last app version · current vault version · proposed app write*. The user picks: keep Obsidian's version (app abandons the write), overwrite with app's (with explicit confirmation), or open a manual-merge editor.
+   - **Never clobber.** While a conflict dialog is open for a given file, the file-watcher pauses app writes to that file. App-managed MOC sections (between `<!-- cic:* -->` markers) follow a softer rule: app re-renders *only those sections*, leaving content outside the markers untouched even on detected drift.
+   - **Read-path drift.** On a *read* path, mismatch is informational — the app picks up the user's changes via the file-watcher and updates SQLite-side state (e.g. status flips, capability edits). No dialog needed unless the change creates a schema-violating frontmatter, in which case the user is shown a "fix or revert?" prompt.
 4. **Frontmatter as API:** treating MOC frontmatter as the course schema is elegant but brittle if hand-edited badly. Need schema validation on read.
 5. **Ingestion robustness:** PDFs are messy — scanned pages (need OCR), multi-column layouts, math notation, broken TOCs. Mode B PDF quality is bounded by parse quality; budget for it and degrade gracefully. (Markdown/EPUB are clean by comparison.)
 6. **Provider quality varies:** Socratic depth + blueprint quality depend on the selected backend. Role-routing + fallback chain (§10.3/10.5) mitigate; local-only mode is a deliberate constraint with set expectations, not a bug.
@@ -518,12 +553,16 @@ Domain-tagged confidence policy; mandatory source citation in technical domains;
 | Atomic linked notes, bridges (F7) | Elaboration, transfer, dual coding |
 | Streaks, reminders, daily target (F8, F9) | Consistency / spacing over time |
 | **Projects (F11)** | **Transfer / application** — closing the *knowledge → use* gap; the largest weakness of pure SRS-based study |
+| **Pretest step (F2.5)** | **Errorful generation / pretest effect** — Roediger & Karpicke, Kornell et al.; producing before knowing primes encoding |
+| **Calibration (F3.5)** | **Metacognition** — Dunlosky et al.; confidence ratings train accurate self-knowledge, counter the illusion of competence |
+| **Surface-form variability (F5/F6/F10)** | **Variability of practice** — Schmidt & Bjork; pairs with interleaving (order) to drive transfer via reduced contextual interference |
 
 ---
 
 *End of v0.5. Intended as the initial spec for Claude Code. Hand off alongside the `war-room-2026` repo and the CIC vault as reference artifacts.*
 
 > **Changelog**
+> - **v0.7** — Three cog-psych additions closing §15 gaps: **F2.5 Pretest step** (errorful generation; Daily Loop becomes 8-step), **F3.5 Calibration** (1-5 confidence on reviews surfacing overconfidence), and **surface-form variability** as a design requirement on F5/F6/F10. Vault contract tightened: **F1 MOC body template locked** with app-managed sections (HTML comment markers); **F7 backlinks consumption** added (app builds its own backlink index, does not depend on Obsidian's cache); **F3.6 block-ref citations** for cards (jump-to-paragraph on review); **vault subfolder support** in §6 (CIC can live in `Learning/` of a larger vault); **F7 Dataview decision locked** — no plugin dependency; **§13 conflict resolution UX** specified with detect (mtime+hash via `vault_writes`)/react (3-way diff dialog)/never-clobber (paused writes while dialog open) rules. Data model gains `confidence` on reviews, `vault_writes` and `pretest_responses` tables.
 > - **v0.6** — Added **F11 Projects: Applied Practice** (§9): optional applied-practice artifact per Course; **multi-milestone** (1..N capabilities applied to one concrete problem); mandatory frontmatter + freeform body with per-domain templates (math/proof, cs/implement, freeform); AI suggestion via `projectSeeds[]` deferred to F10 / Phase 3.5; codified as the system's **transfer / application** mechanism (§15). Extended data model (§8) with `projects` / `project_milestones`; made `sessions.project_id` / `cards.project_id` nullable. Locked: single-Course only (cross-Course handled by Bridges), no auto-grading (§14), Phase 2 ships manual MVP before AI augmentation. Concept ladder updated (§5).
 > - **v0.5** — Locked **Tauri** as the desktop shell (§6, §11; frontend → React + Vite, TS-friendly Tauri plugins) and **native in-app FSRS** for SRS with no Anki dependency (F3). Recorded the **open-source / non-commercial** project stance (§14). Moved Tauri adoption to Phase 0 and reframed Phase 4 as polish + public release (§12). Resolved the desktop + SRS open decisions; added license + vector-store picks (§13).
 > - **v0.4** — Codified **Scaffold as the default** generation mode (F10.5); added **target-up-front** granularity (F10.7: user sets scope + depth, AI fits to it); extended Mode B ingestion to **PDF, EPUB, and Markdown**. Updated the Blueprint IR (§8) and resolved the corresponding open decisions (§13).
