@@ -82,8 +82,8 @@ src-tauri/                # Rust shell + plugin config + capabilities allowlist
 - **Milestone** — a capability gate within a Course ("be able to derive X").
 - **Session** — one run of the Daily Loop.
 - **Note** — atomic Markdown note in the vault, linked via `[[wikilinks]]`.
-- **Card** — SRS flashcard (FSRS state in SQLite).
-- **Source** — an ingested PDF/EPUB/Markdown document.
+- **Card** — SRS flashcard (FSRS state in SQLite). Cites Resources (M:N `card_resources` with locator) and optionally a resource-note (via Obsidian block-ref).
+- **Resource** — any reference material the user studies: book, PDF, EPUB, Markdown, video file, video URL, web page, or audio. First-class entity per Course (M:N `course_resources`). May be AI-ingested (F10.2 → RAG corpus) or registered manually without ingestion (F10.8 — physical books, copyrighted videos). Has `kind`, optional `file_path`, optional `url`, kind-specific metadata, optional locator-able ranges.
 - **Bridge** — a cross-domain connection note (`#bridge`).
 - **Project** — optional applied-practice artifact per Course: 1..N Milestones' capability applied to one concrete problem (PRD §F11). The unit of *application* — distinct from a Milestone (capability gate) or a Session (one daily-loop run). Non-conform format: mandatory frontmatter + per-domain freeform body. AI suggests, never solves or grades.
 - **Course Blueprint** — the reviewable IR both generation modes emit before materialization (see PRD §8/F10).

@@ -1,5 +1,5 @@
 # PRD — Combat Information Center (CIC) Learning Platform
-### Initial Specification for Claude Code · v0.7
+### Initial Specification for Claude Code · v0.8
 
 > **Codename:** CIC (working title — built on the `war-room-2026` foundation). Rename freely.
 > **Purpose of this document:** a build-ready spec to hand to Claude Code. It defines the vision, the architecture decision that everything hinges on, the data model, the feature set, and a phased migration plan from the existing `war-room-2026` repo.
@@ -15,6 +15,8 @@
 > **Locked in v0.6:** New feature **F11 Projects: Applied Practice** (§9) — optional applied-practice artifact per Course, **multi-milestone** (1..N Milestones' capability applied to one concrete problem), with a mandatory frontmatter wrapper + per-domain freeform body templates. Closes the *transfer / application* mechanism gap (§15). Data model extended (§8); Course Blueprint IR gains `projectSeeds[]` (F10 / Phase 3.5). Locked sub-decisions: single-Course only (cross-Course handled by Bridges), no auto-grading (§14), Phase 2 ships manual MVP before AI augmentation.
 >
 > **Locked in v0.7:** Cog-psych additions closing three more gaps in §15 — **F2 pretest step** (errorful generation before active study; Daily Loop becomes 8-step), **F3.5 calibration** (confidence ratings on reviews surfacing overconfidence — the illusion of competence the PRD already cites), and **variability of surface form** as a design requirement on F5/F6/F10 (Schmidt & Bjork: variability complements interleaving). Vault contract tightened: **F1 MOC body template locked** with app-managed sections (no Dataview dependency), **F7 backlinks consumption** added (read, not just write), **block-ref citations** in cards (jump-to-paragraph on review), **vault subfolder support** (§6 — CIC can live under `Learning/` in a larger vault), and a concrete **conflict resolution UX** in §13 (detect via mtime+hash, 3-way diff dialog, no-clobber while open).
+>
+> **Locked in v0.8:** Closing the **Resource ↔ Session ↔ Card** chain. **Resources** become a first-class entity (books, PDFs, EPUBs, Markdown, video files, video URLs, web pages, audio) with kinds, locators, and optional AI-ingestion. Sessions get explicit **assignments** (`session_assignments`) — "read pp.10-15", "watch 00:15-00:23", "review Chapter 3" — that drive F2's active-study step. **Cards cite Resources directly** (M:N `card_resources` with locators), in addition to the v0.7 block-ref-to-Note citation. Naming pass: the old "Source" / "Source Note" domain term is renamed to **Resource** / **Resource Note** for consistency (Source was overloaded — meant both the document and the user's commentary; English-idiom uses of "source" stay). Blueprint IR's `source` field → `input` to disambiguate from the Resource concept.
 
 ---
 
@@ -41,7 +43,7 @@ Result: the learner is the integration layer. The platform should be.
 ## 3. Product Principles
 
 1. **Evidence-based, not productivity theatre.** Every feature must serve a documented learning-science mechanism (see §11 glossary). If it doesn't map to retrieval / spacing / interleaving / elaboration, it doesn't ship.
-2. **The vault is the source of truth.** All *knowledge* (notes, course definitions, source notes, session writeups) lives as plain Markdown in the user's Obsidian vault. The app reads and writes those files; it never locks knowledge inside a proprietary DB. The user can always open the vault in Obsidian directly.
+2. **The vault is the source of truth.** All *knowledge* (notes, course definitions, resource notes, session writeups) lives as plain Markdown in the user's Obsidian vault. The app reads and writes those files; it never locks knowledge inside a proprietary DB. The user can always open the vault in Obsidian directly.
 3. **Fully local, Obsidian-reliant.** All user data lives on-device. The Obsidian vault is the **mandatory, canonical** knowledge store — the app points at an existing vault, reads/writes Markdown, and cooperates with Obsidian rather than replacing it. There is **no cloud backend** for storage or sync. *Distinction:* AI **inference** is pluggable (see principle 4a) and may call a remote provider if the user configures one — but storage is always local, and a local-only lockdown mode can forbid sending vault content off-device entirely.
 4. **AI is a tutor, not an oracle.** AI features are grounded in the user's vault + authoritative sources via RAG, and must surface uncertainty — especially in math/physics where models are unreliable. The AI generates questions, explanations, and draft cards; it never silently becomes the arbiter of correctness.
    - **4a. Vendor-agnostic.** No AI capability is bound to a specific vendor. The user plugs in any backend — local (Ollama, LM Studio, llama.cpp, vLLM), OpenRouter, or any frontier API key — and may route different tasks to different providers. Guardrails (principle 4) apply identically regardless of backend. See §10.
@@ -80,7 +82,7 @@ The existing repo provides a working, tested chassis. We keep its concepts, gene
 | Module (daily scheduled activity) | **Session** | One run of the daily learning loop |
 | Note | **Note** (atomic, in the vault) | Now first-class vault Markdown, linkable |
 | — (new) | **Card** | SRS flashcard with scheduling state |
-| — (new) | **Source** | Literature note |
+| — (new) | **Resource** | Any reference material the user studies — book, PDF, EPUB, Markdown, video file, video URL, web page, audio. First-class entity per Course, with kinds + locators (see F1, §8) |
 | — (new) | **Bridge** | Cross-domain connection note (`#bridge`) |
 | — (new) | **Project** | Optional applied-practice artifact per Course — 1..N Milestones' capability applied to one concrete problem (see F11) |
 
@@ -111,7 +113,7 @@ This is the load-bearing choice. The two hard requirements — **(a) the Obsidia
 
 Not everything belongs in Markdown. Split by data nature:
 
-- **Knowledge → Obsidian vault (Markdown + frontmatter).** Source of truth. Notes, course MOCs (with milestone/resource/dependency frontmatter), source notes, bridges, session writeups. Human-editable, Git-able, openable in Obsidian.
+- **Knowledge → Obsidian vault (Markdown + frontmatter).** Source of truth. Notes, course MOCs (with milestone/resource/dependency frontmatter), resource notes (commentary on books, PDFs, videos, web pages, etc.), bridges, session writeups. Human-editable, Git-able, openable in Obsidian.
 - **Tracking & scheduling state → local SQLite.** Fast-querying structured data the vault is bad at: streaks, schedule, session timings, completion cascade, and **SRS card scheduling state** (FSRS parameters, due dates, review history).
 - **AI grounding → local vector store.** Embeddings of vault notes + ingested sources for RAG (see §10).
 
@@ -153,8 +155,8 @@ The app keeps SQLite and the vault in sync: it **reads** MOC frontmatter to lear
 
 ### Vault (Markdown, canonical for knowledge)
 - **Course MOC** — frontmatter: `type: course`, `domain`, `campaign`, `milestones[]` (each with `id`, `capability`, `done`), `resources[]`, `depends_on[]`. Body: the curated MOC.
-- **Concept Note** — `type: concept`, `domain`, links (`builds_on`, `related`), self-test Q/A, source ref.
-- **Source Note** — `type: source`, `author`, `kind`.
+- **Concept Note** — `type: concept`, `domain`, links (`builds_on`, `related`), self-test Q/A, optional `resource_ref` linking back to the Resource(s) that taught this concept.
+- **Resource Note** — `type: resource-note`, `resource_id` (FK to `resources` in SQLite), optional `locator` (when the note covers a specific section/chapter/range), `author?`. The user's commentary, summary, or lit-review excerpt about a Resource. Distinct from the Resource itself (which lives in SQLite + optionally as a file on disk).
 - **Bridge Note** — `type: concept`, `tags: [bridge]`.
 - **Session Writeup** — `type: log`, `date`, `course`, `objective`, recalled-from-memory, gaps, cards-made.
 - **Project** — `type: project`, `id`, `course`, `milestones[]`, `capability`, `status` (`open` | `in-progress` | `complete` | `abandoned`), `opened`, `closed?`, `template?`. Body: suggested *Problem · Approach · Work · Reflection* headings — per-domain templates override the body shape (math/proof, cs/implement, freeform). Mandatory frontmatter = integration layer; freeform body = domain-shaped. See F11.
@@ -172,11 +174,15 @@ The app keeps SQLite and the vault in sync: it **reads** MOC frontmatter to lear
 - `project_milestones(project_id, milestone_id)` — M:N; a Project applies 1..N Milestones' capability
 - `vault_writes(file_path, app_mtime, app_hash)` — written by the app *after* a successful `VaultWriter` write; the file watcher compares OS mtime + body hash against this to detect Obsidian-modified-since-app (drives the §13 conflict UX)
 - `pretest_responses(session_id, question, user_response, revealed_after)` — captures the pretest answers (F2.5); used in the session writeup's "what you thought vs what's true" comparison
+- `resources(id, title, kind, file_path?, url?, metadata JSON, ingested_at?, added_at)` — first-class entity (v0.8). `kind` ∈ `pdf` / `epub` / `markdown` / `video_file` / `video_url` / `web_page` / `book` / `audio`. `file_path` is local (may be inside or outside the vault); `url` is web. `metadata` is kind-specific (author, isbn, duration, transcript_path, …). `ingested_at` is non-null only when AI has chunked + embedded it (see vector store below) — a Resource can exist without ever being ingested (physical books, copyrighted videos)
+- `course_resources(course_id, resource_id, role)` — M:N; `role` ∈ `primary` / `secondary` / `reference`. A Resource may be referenced by multiple Courses (one textbook, several courses)
+- `session_assignments(session_id, resource_id, locator, assignment_kind)` — what the user is supposed to read/watch/listen to in this session. `assignment_kind` ∈ `read` / `watch` / `listen` / `review`. `locator` is a free-form string with kind-specific conventions (`p.10-15`, `00:15:30-00:23:45`, `#section-3`, `Ch.3 §2`). The Daily Loop's active-study step iterates these
+- `card_resources(card_id, resource_id, locator)` — M:N; a Card cites 0..N Resources at specific locations. Pre-populated from the spawning session's assignments; user can edit at spawn-time. Review-time the citation can deep-link back to the Resource (PDF page, video timestamp, URL anchor — best-effort per kind)
+- `project_resources(project_id, resource_id, locator)` — M:N; optional. A Project may target specific Resources (e.g. "solve problems from Strang Ch.3" → resource=Strang, locator=Ch.3)
 
 ### Vector store
-- `chunks(id, note_path, text, embedding, source_kind)` — for RAG over the vault + ingested sources.
-- `sources(id, title, kind, file_path, ingested_at)` — ingested PDFs/ebooks (the file stays local).
-- `source_map(id, milestone_id, source_id, locator)` — links a milestone to exact source ranges (chapter/section/page/loc + chunk ids) for grounded study, cards, and quizzes.
+- `chunks(id, note_path, text, embedding, resource_kind)` — for RAG over the vault + ingested Resources.
+- `resource_map(id, milestone_id, resource_id, locator)` — links a milestone to exact Resource ranges (chapter/section/page/loc + chunk ids) for grounded study, cards, and quizzes. The `resources` table itself is now first-class in SQLite (above) — only the *RAG mapping* lives here.
 
 ### Course Blueprint (the generation IR — see F10)
 A transient, reviewable intermediate object that **both** generation modes emit and that materializes into the vault + SQLite on approval. Not persisted long-term; the materialized MOC + rows are the durable artifact.
@@ -184,14 +190,14 @@ A transient, reviewable intermediate object that **both** generation modes emit 
 CourseBlueprint {
   title, domain, campaign?,            // placement
   summary,
-  source: { type: "conversation" | "document", ref, chunkCount? },
+  input: { type: "conversation" | "document", ref, chunkCount? },  // generation origin (not a Resource)
   docKind?: "pdf" | "epub" | "markdown",  // Mode B parse path
   granularity: "course" | "campaign",  // SET BY USER UP FRONT (F10.7)
   targetDepth: "overview" | "working" | "mastery",  // SET BY USER UP FRONT
   milestones: [{
     id, capability,                    // "be able to derive X" — the loop objective
     dependsOn: [milestoneId],
-    sourceMap: [{ sourceId, locator }],// exact ranges → study + RAG grounding
+    resourceMap: [{ resourceId, locator }], // exact ranges → study + RAG grounding
     conceptSeeds: [{ title, stub }],   // OPTIONAL note stubs (see F10.5 guardrail)
     cardSeeds:    [{ front, back, status: "suggested" }],
     retrievalQs:  [string],
@@ -219,6 +225,8 @@ The tracking layer (dashboard, calendar, streaks, cascading completion) is inher
 ### F1 — Course Authoring (manual)
 Create user-defined courses with capability milestones, resources, and dependencies by hand. Writing a course **generates/updates its MOC Markdown file** in the vault (frontmatter + body). Editing the MOC in Obsidian directly is reflected back on next sync. Supports the Campaign → Course → Milestone hierarchy. *(For AI-assisted creation — conversational or from a document — see **F10**, which produces a Course Blueprint that materializes through this same path.)*
 
+**Resource registration (v0.8).** Adding a Resource to a Course is a first-class action — not a free-form string in MOC frontmatter. The authoring UI offers a kind picker (`pdf` / `epub` / `markdown` / `video_file` / `video_url` / `web_page` / `book` / `audio`) and kind-appropriate fields: file picker for local files, URL field for web, manual title/author entry for books with no file. The Resource is stored in `resources` (SQLite); the M:N link to the Course is stored in `course_resources` with a `role` of `primary` / `secondary` / `reference`. **Resources are reusable across Courses** — one textbook can be the primary Resource of two related Courses without duplication. The MOC body's `## Resources` section is rendered from these rows (between the `<!-- cic:resources -->` markers per the v0.7 template).
+
 **MOC body template (locked v0.7).** Every Course MOC has a fixed body structure so dashboards, scheduler, and AI features can rely on it:
 
 ```markdown
@@ -241,7 +249,14 @@ A first-class, step-guided session implementing the 8-step protocol (v0.7):
 The flow:
 - prompts for a **capability-phrased objective**,
 - **F2.5 pretest step** — before opening the source, the app presents 2-4 pretest questions on the objective (seeded from prior session writeups, milestone capabilities, or AI-generated from the source's table of contents *without* revealing content). The user attempts answers from intuition or prior knowledge. **Wrong answers are expected and beneficial** — errorful generation primes encoding (Roediger & Karpicke; Kornell et al.). Answers are logged to `pretest_responses` and surfaced in the session writeup as a "what you thought vs what's true" comparison. *Never graded, never scored — the value is in the attempt.*
-- opens the source for **active study**,
+- **F2.3 Session assignments (v0.8)** — before active study begins, the session has 0..N **assignments** (`session_assignments` rows): "read pp.10-15 of *textbook X*", "watch 00:15-00:23 of *lecture 3*", "review your notes from last session". Assignments are authored by the user (manually, when starting the session) or seeded by the scheduler (F6) from the milestone's `resource_map`. The active-study step iterates the assignments, **opening each Resource at its locator** via the appropriate viewer:
+  - PDF: system PDF viewer with `#page=N` (most viewers honor this)
+  - EPUB / Markdown: Obsidian or the system Markdown viewer
+  - Video file: launch external player at timestamp (best-effort; see §13)
+  - Video URL (YouTube): browser at `?t=N`
+  - Web page: browser at URL, with `#anchor` if provided
+  - Book / audio: display the locator string (user opens the physical book or audio app manually)
+  V1 ships **external viewer launch only**; embedded players are deferred (§14).
 - provides a **retrieval scratchpad** for post-study recall (write from memory before re-opening the source — distinct from pretest: this is *corrective* retrieval, not errorful generation),
 - opens a **note editor** that writes an atomic Markdown note into the vault with backlinks,
 - launches the **Feynman/quiz** panel (F4/F5),
@@ -251,18 +266,19 @@ The flow:
 ### F3 — Built-in Spaced Repetition (SRS) — LOCKED (native, centralized)
 A fully **native** flashcard system so the user never leaves the platform — Anki is not required, not installed, not a dependency. Retention lives where the courses, notes, and sessions already are.
 - Algorithm: **FSRS** (modern, the algorithm Anki adopted) for scheduling. Use an open-source TypeScript implementation (e.g. `ts-fsrs`) — fits the open-source goal and keeps it in-stack.
-- Cards are linked to their source note and course; scheduling state in SQLite (`cards.fsrs_state`, `reviews`).
+- Cards are linked to their resource note (when one exists) and course; scheduling state in SQLite (`cards.fsrs_state`, `reviews`).
 - **AI-assisted card generation**: select a note → AI drafts atomic Q/A cards (user edits/approves; never auto-committed; respects the F10.5 scaffold guardrail).
 - Full in-app review UI: due queue, rating buttons, retrieval-before-reveal enforced, cloze + image-occlusion card types.
 - Daily review reminder via native notification (Tauri).
 - **F3.5 Calibration (v0.7)** — every card review collects a **confidence rating (1-5)** alongside the FSRS effort rating. The dashboard surfaces **overconfident cards** (high confidence + "again"/incorrect rating) — these are where the *illusion of competence* concentrates (Dunlosky et al.; same literature §3 principle 1 cites). Calibration is also prompted inline on F5 quizzes (in-session feedback only; not persisted in v1). Over time, the user develops accurate self-knowledge of what they know vs. think they know — a metacognitive skill the system *trains by collecting*, not by teaching.
-- **F3.6 Block-ref citations (v0.7)** — cards that cite a source note use Obsidian block references (`[[note#^block-id]]`) rather than note-level links. On review, clicking the citation jumps to the exact paragraph. The card-generation AI inserts `^block-id` markers in the source note when drafting, idempotent across regenerations. See F7 for block-id management.
+- **F3.6 Block-ref citations (v0.7)** — cards that cite a resource note use Obsidian block references (`[[note#^block-id]]`) rather than note-level links. On review, clicking the citation jumps to the exact paragraph. The card-generation AI inserts `^block-id` markers in the resource note when drafting, idempotent across regenerations. See F7 for block-id management.
+- **F3.7 Resource citations (v0.8)** — Cards also cite **Resources directly** via the `card_resources` M:N table (resource_id + locator). On card-spawn, the table is **pre-populated from the spawning session's assignments** — the card inherits the breadcrumb of what the user was reading/watching when it was created. The card-spawn review UI lets the user edit (add/remove resources, refine locator) before adding to SRS. On review, the citation deep-links back to the Resource at its locator (PDF page, video timestamp, etc. — best-effort per kind, per F2.3). **A card can cite both** a resource note (via block-ref) *and* the originating Resources — the note is your processed knowledge; the Resource is the original source.
 - *Optional, non-core (future):* a one-way export to Anki for users who already live there. Not a V1 concern and explicitly **not** a reason to split the workflow — the platform is the home for review.
 
 ### F4 — AI Feynman / Socratic Interrogation
 The headline AI feature. The user explains a concept; the AI plays the probing beginner / Socratic examiner and finds gaps.
-- **RAG-grounded**: retrieves the user's own relevant vault notes + ingested authoritative sources, so questioning is anchored to real material, not model confabulation.
-- **Tutor-not-oracle guardrails**: in flagged technical domains (math, physics, proofs) the AI must cite the grounding source and explicitly flag when it is unsure rather than assert correctness.
+- **RAG-grounded**: retrieves the user's own relevant vault notes + ingested authoritative Resources, so questioning is anchored to real material, not model confabulation.
+- **Tutor-not-oracle guardrails**: in flagged technical domains (math, physics, proofs) the AI must cite the grounding Resource and explicitly flag when it is unsure rather than assert correctness.
 - **Gap logging**: identified gaps are written back as `- [ ]` tasks in the session writeup and surfaced on the dashboard as "to chase."
 
 ### F5 — Retrieval Practice Quizzes
@@ -282,7 +298,7 @@ The mechanism that enforces the method.
 - Read/write atomic Markdown notes with `[[wikilinks]]`.
 - **Backlinks consumption (locked v0.7).** The app builds its own backlink index by scanning all vault files on startup + incrementally on file-watcher events (does **not** depend on Obsidian's internal cache). Every Concept Note view in the dashboard shows backlinks: which Cards, Sessions, Projects, and Bridges reference this concept. Used by F4 (Feynman tutor seeds questions from how a concept is *used*, not just defined) and by F6 (a concept with no recent backlinks gets surfaced as cold).
 - **MOC auto-index (revised v0.7).** The app writes structured sections into MOCs between HTML comment markers (`<!-- cic:milestones -->` etc., see F1's MOC body template) — replicating common queries (list concepts by domain, "going cold", bridges, open questions, active Projects, recent Sessions). **The app does NOT depend on the Dataview plugin.** MOCs render natively in plain Obsidian out of the box. Users who happen to have Dataview installed can add their own queries in user-owned sections; the app never touches those.
-- **Block-id management (v0.7).** When the AI generates cards citing a source note (F3.6), it inserts `^block-id` markers in the source note at paragraph boundaries. IDs are deterministic (hash of paragraph content) so regenerations are idempotent — no duplicate `^abc123 ^abc123` build-up. The `VaultWriter` does this inline as part of the card-generation transaction.
+- **Block-id management (v0.7).** When the AI generates cards citing a resource note (F3.6), it inserts `^block-id` markers in the resource note at paragraph boundaries. IDs are deterministic (hash of paragraph content) so regenerations are idempotent — no duplicate `^abc123 ^abc123` build-up. The `VaultWriter` does this inline as part of the card-generation transaction.
 - A **graph view** of note links (cross-domain bridges highlighted).
 - Two-way sync with file-watcher; conflict handling when Obsidian edits the same file (see the concrete UX in §13).
 
@@ -314,18 +330,18 @@ Hand it a **PDF, ebook (EPUB), or Markdown file** → get a loop-ready course. T
    - **Markdown** — the cleanest case: headings (`#`/`##`/`###`) *are* the structure; existing `[[wikilinks]]`/frontmatter are preserved. Ingesting a `.md` that already lives in the vault is a first-class path (e.g. turn a pile of rough notes into a structured course). No OCR, no layout guessing.
    - **EPUB** — structured spine + TOC; reliable.
    - **PDF** — messiest: handle textbook / paper / slide-deck shapes; OCR fallback for scanned PDFs (§13 risk).
-2. **Chunk & embed** into the vector store. *Side benefit:* the ingested source becomes an **authoritative RAG source** the Feynman tutor (F4) and quizzes (F5) cite — so for that course, the source of truth is literally the document, not the model.
-3. **Synthesize the Blueprint.** The AI transforms the document into capability milestones, placement (domain/campaign), a dependency graph, and per-milestone source mappings + seeds (see F10.4) — **fitting the structure to the user's chosen target** (F10.7), not the document's raw size.
+2. **Register as a Resource + chunk & embed** into the vector store. A row is inserted into `resources` (kind = `pdf` / `epub` / `markdown`, `ingested_at = now()`) and chunks land in the vector store with a `resource_map` entry per milestone. *Side benefit:* the Resource becomes an **authoritative RAG Resource** the Feynman tutor (F4) and quizzes (F5) cite — so for that course, the source of truth is literally the document, not the model.
+3. **Synthesize the Blueprint.** The AI transforms the document into capability milestones, placement (domain/campaign), a dependency graph, and per-milestone Resource mappings + seeds (see F10.4) — **fitting the structure to the user's chosen target** (F10.7), not the document's raw size.
 4. **Review → materialize.**
 
 > **Design rule — transform, don't mirror.** A document's TOC (or a note file's heading tree) is *not* a good learning sequence by default (front-matter, optional chapters, uneven difficulty, reference appendices). The AI must resequence into capability milestones through the desirable-difficulties lens, not just copy headings into a list.
 
 #### F10.3 — Materialization
-On approval, the Blueprint becomes durable: write the **MOC Markdown** (frontmatter ← blueprint), insert `courses` + `milestones` + `source_map` rows, register the `source`, and create `cards` as **`status: suggested`** (not yet scheduled — see guardrail). Idempotent and re-runnable (regenerating a section updates, doesn't duplicate).
+On approval, the Blueprint becomes durable: write the **MOC Markdown** (frontmatter ← blueprint), insert `courses` + `milestones` + `resource_map` rows, register the `Resource` (with `course_resources` linkage), and create `cards` as **`status: suggested`** (not yet scheduled — see guardrail). Idempotent and re-runnable (regenerating a section updates, doesn't duplicate).
 
 #### F10.4 — Loop-seeding (how "the AI orchestrates the rest")
 Generation doesn't stop at an outline — it seeds **all five loop mechanisms** so a freshly generated course is immediately runnable:
-- **Daily Loop (F2):** each milestone's capability statement *is* a ready session objective; its `sourceMap` feeds the active-study step.
+- **Daily Loop (F2):** each milestone's capability statement *is* a ready session objective; its `resourceMap` is the seed for the session's assignments (F2.3), which the active-study step then iterates and opens.
 - **SRS (F3):** `cardSeeds` become suggested flashcards.
 - **Retrieval quizzes (F5):** `retrievalQs` seed the quiz bank.
 - **Feynman (F4):** `feynmanTargets` mark concepts to interrogate.
@@ -333,20 +349,23 @@ Generation doesn't stop at an outline — it seeds **all five loop mechanisms** 
 
 #### F10.5 — The desirable-difficulty guardrail (CODIFIED DEFAULT)
 **AI-generated content must never short-circuit the learning it's meant to support.** If the app hands the user a complete set of polished notes and answered cards, it recreates exactly the *input-hoarding / illusion-of-competence* failure mode the whole methodology exists to prevent (the value is in the user retrieving and writing in their own words — not reading the AI's). This is a **locked product decision, not a configurable default that ships flipped:**
-- **Scaffold is THE default generation mode** — structure, objectives, source mappings, and *questions* (retrieval Qs, Feynman targets, card **fronts**), but **not** pre-written answers/notes. The user produces the durable knowledge artifacts through the loop. Scaffold is the path the happy-path UI leads to; Full-draft is never pre-selected.
+- **Scaffold is THE default generation mode** — structure, objectives, Resource mappings, and *questions* (retrieval Qs, Feynman targets, card **fronts**), but **not** pre-written answers/notes. The user produces the durable knowledge artifacts through the loop. Scaffold is the path the happy-path UI leads to; Full-draft is never pre-selected.
 - An opt-in **Full-draft** mode may pre-fill answers/note stubs, but they are clearly marked `ai-draft`, and a card/note is **never** counted as "learned" until the user has actually engaged it (reviewed the card, rewritten the stub in their own words). Full-draft requires an explicit, deliberate switch each time — it does not become sticky/remembered as a preference.
 - Framing: the generator's job is to remove **setup** friction, never **thinking** friction.
 
 #### F10.6 — Provenance & privacy
-Generated MOCs/notes carry `generated_by` + source provenance in frontmatter. Ingested copyrighted sources stay **local** (consistent with §3); if a remote provider is configured, excerpts are sent for synthesis — the **local-only lockdown mode (§10.6)** protects ingested content too.
+Generated MOCs/notes carry `generated_by` + Resource provenance in frontmatter. Ingested copyrighted Resources stay **local** (consistent with §3); if a remote provider is configured, excerpts are sent for synthesis — the **local-only lockdown mode (§10.6)** protects ingested content too.
 
 #### F10.7 — Target-setting up front (granularity)
 **The user declares the intended scope before generation runs; the AI fits to that target rather than inferring granularity from document size.** This removes guesswork and makes output predictable. The target is a small, explicit choice:
 - **Scope:** `single course` | `campaign` (multiple linked courses). Determines whether the engine emits a Course Blueprint or a Campaign Blueprint.
 - **Depth:** roughly how many milestones / how deep (e.g. *overview*, *working knowledge*, *deep mastery*) — shapes milestone count and granularity.
-- **(Mode B) Coverage:** whole document vs a chapter range, when the user only wants part of a source.
+- **(Mode B) Coverage:** whole document vs a chapter range, when the user only wants part of a Resource.
 
 Behavior: the synthesis step is **constrained by the target** — a 900-page textbook with a `single course / overview` target yields a tight high-level course, while the same book with a `campaign / deep mastery` target yields a multi-course campaign. The AI may *advise* if the target seems mismatched to the material ("this is a lot for one course — consider a campaign?"), but it **does not override** the user's choice. The target lives on the Blueprint (`granularity` + a `targetDepth` field) and is editable on review.
+
+#### F10.8 — Manual Resource registration (no ingestion)
+Not every Resource is ingestible. Physical books, copyrighted videos, paywalled web articles, and audio lectures often can't (or shouldn't) be parsed for RAG. F10.8 handles this: the user registers a Resource by kind + metadata (title, author, URL, duration, ISBN — whatever applies) and links it to a Course via `course_resources`. The Resource is now first-class for **assignment, citation, and tracking** purposes (F2.3, F3.7, F8) — it just doesn't appear in the RAG corpus. The Feynman tutor (F4) and quizzes (F5) can still reference it by title and locator, but cannot quote its content. *This is the path for "I'm reading a physical book" or "watching this lecture series on YouTube" — keeps the Resource ↔ Session ↔ Card chain intact without requiring digitization.*
 
 ### F11 — Projects: Applied Practice ⭐
 The mechanism that closes the *knowledge → application* gap. Before this feature, no part of the system had transfer/application as its primary mechanism (see §15) — every loop component reinforced *acquisition* (retrieval, spacing, elaboration). Projects close that.
@@ -354,7 +373,7 @@ The mechanism that closes the *knowledge → application* gap. Before this featu
 A **Project** is a concrete problem the user solves using **1..N Milestones' worth of capability** from a single Course. It is the unit of *application* — distinct from a Milestone (capability gate: *"be able to derive X"*) and a Session (one run of the daily loop). **Optional per Course** — some Courses will have many, some will have none. *Always human-driven: the AI suggests but never solves.*
 
 #### F11.1 — Authoring (manual)
-Create a Project from a Course MOC. Required: title, course, at least one Milestone link, a capability statement (one sentence — *"what does completing this prove I can do?"*). Optional: additional Milestones, template hint, opening problem framing. Writing a Project **generates a Markdown file in the vault** via `VaultWriter`. Editing the file in Obsidian directly is reflected back on next sync.
+Create a Project from a Course MOC. Required: title, course, at least one Milestone link, a capability statement (one sentence — *"what does completing this prove I can do?"*). Optional: additional Milestones, template hint, opening problem framing, **Resource references** (`project_resources` M:N — e.g. "solve problems from Strang Ch.3" → resource=Strang, locator=Ch.3). Writing a Project **generates a Markdown file in the vault** via `VaultWriter`. Editing the file in Obsidian directly is reflected back on next sync.
 
 #### F11.2 — Non-conform format (the key design choice)
 Projects vary radically by domain: a math project is a proof or computation, a CS project is code, a language project is an essay, a history project is a primary-source analysis. The schema reflects this with a **two-layer split**:
@@ -423,7 +442,7 @@ This enables privacy-savvy mixes — e.g. **embeddings + RAG fully local while r
 Storage is always local, but configuring a remote provider means RAG context (excerpts of the user's vault notes) and prompts are sent to that vendor. The provider setup UI must state this plainly. A **local-only lockdown mode** refuses to send vault content to any non-local endpoint — a selectable hard guarantee that honors the "fully local" principle while still allowing opt-in cloud for those who want it.
 
 ### 10.7 RAG pipeline (provider-independent)
-On note save, chunk + embed into the local vector store. At query time, retrieve top-k relevant chunks from the vault + ingested sources to ground prompts. The embedding provider is just another routed role (10.3).
+On note save, chunk + embed into the local vector store. At query time, retrieve top-k relevant chunks from the vault + ingested Resources to ground prompts. The embedding provider is just another routed role (10.3).
 
 ### 10.8 Prompt templates (versioned, in-repo, backend-independent)
 - *Socratic interrogation* — "ask one question at a time, probe gaps, don't lecture," grounded in retrieved context.
@@ -473,8 +492,9 @@ Domain-tagged confidence policy; mandatory source citation in technical domains;
 - Native **FSRS** SRS + full in-app review UI (F3).
 - Daily Loop guided flow writing notes + writeups to the vault (F2).
 - Native notifications for reviews/sessions (`tauri-plugin-notification`, F9).
+- **Resources MVP (v0.8):** register Resources of all 8 kinds (F1 + F10.8); link to Courses via `course_resources`; F2.3 session assignments wired; F2 active-study step opens assigned Resources at locator via external viewers (best-effort deep-linking); F3.7 cards inherit `card_resources` from session assignments. AI ingestion (F10.2) is a Phase 3.5 concern; this phase ships **manual** Resource registration only.
 - **Projects MVP (F11):** manual authoring from a Course MOC, frontmatter zod schema, status tracking, `sessions.project_id` / `cards.project_id` links wired, close-reflection prompt that offers manual card-spawn. Ship 3 seed templates (`math/proof`, `cs/implement`, `freeform`). No AI suggestion yet.
-- *Milestone: complete one full loop end-to-end, cards scheduled, reminders firing, and one Project opened → in-progress → complete with a card spawned from the reflection.*
+- *Milestone: complete one full loop end-to-end with a Session that has a real Resource assignment (e.g. "read pp.10-15 of a registered PDF"), the active-study step opens the PDF at page 10, the user writes a Note, spawns a Card from that Note, and the Card cites the Resource — all without an AI provider configured. Plus one Project closed with a card spawned.*
 
 **Phase 3 — AI engine:**
 - Vendor-agnostic provider layer + RAG indexer (§10).
@@ -486,7 +506,7 @@ Domain-tagged confidence policy; mandatory source citation in technical domains;
 - Mode A conversational "Campaign Architect" (F10.1); target-up-front (F10.7).
 - Mode B ingestion (Markdown → EPUB → PDF): parse → embed → synthesize → loop-seed (F10.2, F10.4), Scaffold mode first.
 - **`projectSeeds[]` in the Blueprint (F11.4):** generation suggests Projects per Course; user reviews/edits/approves like other Blueprint output. Materialization writes Project Markdown files via `VaultWriter`.
-- *Milestone: drop in a file, review the blueprint, and run the first generated session — with the source itself grounding the Feynman tutor — and with at least one applied-practice Project seeded for review.*
+- *Milestone: drop in a file, review the blueprint, and run the first generated session — with the Resource itself grounding the Feynman tutor (via `resource_map`) and feeding the session's active-study assignments — and with at least one applied-practice Project seeded for review.*
 
 **Phase 4 — Polish + open-source release:**
 - Interleaving/desirable-difficulty scheduler (F6); graph view; bridge finder.
@@ -525,6 +545,8 @@ Domain-tagged confidence policy; mandatory source citation in technical domains;
 5. **Ingestion robustness:** PDFs are messy — scanned pages (need OCR), multi-column layouts, math notation, broken TOCs. Mode B PDF quality is bounded by parse quality; budget for it and degrade gracefully. (Markdown/EPUB are clean by comparison.)
 6. **Provider quality varies:** Socratic depth + blueprint quality depend on the selected backend. Role-routing + fallback chain (§10.3/10.5) mitigate; local-only mode is a deliberate constraint with set expectations, not a bug.
 7. **Multi-device state (out of scope V1):** the vault syncs via Git/Obsidian Sync, but local SQLite tracking/SRS state does not. Accepted single-device limitation for V1; revisit later (e.g. an exportable/syncable SQLite file).
+8. **Resource file path stability (v0.8):** Resources reference local files via absolute `file_path`. Moving or renaming the file outside the app breaks the link. V1 mitigation: on first detection of a missing file, prompt the user to relocate (file picker → update `file_path` in `resources`); don't silently drop the citation. **Resources outside the vault folder are common and supported** (videos are huge; users keep them under `~/Videos/`), so we can't rely on Obsidian or the vault file-watcher here.
+9. **External viewer deep-linking is best-effort:** PDF `#page=N` works in most viewers; YouTube `?t=N` works in browsers; system video players are inconsistent; physical books just display the locator string. The F2.3 active-study UX must not pretend deep-linking always succeeds — if a locator can't be honored, show it as text and let the user navigate manually.
 8. **Cross-platform webview quirks:** Tauri uses each OS's native webview, so test rendering on Windows/macOS/Linux; avoid bleeding-edge CSS that WebKit/WebView2 diverge on.
 9. **Naming:** "CIC" vs "War Room" vs new. Cosmetic; decide early for package naming.
 
@@ -536,6 +558,8 @@ Domain-tagged confidence policy; mandatory source citation in technical domains;
 - Cloud hosting / accounts.
 - Marketplace of shared courses.
 - **Auto-grading of Projects (F11).** AI suggests Projects (F11.4), can interrogate them via the Feynman tutor (F4), and helps spawn cards on close — but it does **not** assess whether a Project is correctly completed. The user runs their own tests, verifies their own proofs, judges their own work product. Consistent with §3 principle 4.
+- **Embedded PDF / video / audio players (v0.8).** V1 launches **external viewers** for Resources (system PDF viewer, browser for YouTube, file association for local video). Embedded in-app players are deferred — they're significant build cost (PDF.js, ffmpeg-wasm or shelled mpv, etc.) and the OS already has good options. Revisit if deep-linking friction becomes the main UX complaint.
+- **Automatic web-page archival (v0.8).** Web Resources of kind `web_page` store the URL only, not a local HTML snapshot. If the page goes offline, the citation goes stale. SingleFile-style archival is a V2 polish item.
 - **Monetization — explicitly out.** This is a non-commercial project; commerciability is not a design constraint.
 
 **Project stance:** the goal is a genuinely useful personal learning tool, to be **released as open source on GitHub** once polished. Implications already baked into the spec: all dependencies are open-source-compatible (Tauri, SQLite, FSRS, sqlite-vec/LanceDB); the vendor-agnostic AI layer avoids any proprietary lock-in; and there is no telemetry or account system. Ship with a LICENSE, README, and CONTRIBUTING guide.
@@ -562,6 +586,7 @@ Domain-tagged confidence policy; mandatory source citation in technical domains;
 *End of v0.5. Intended as the initial spec for Claude Code. Hand off alongside the `war-room-2026` repo and the CIC vault as reference artifacts.*
 
 > **Changelog**
+> - **v0.8** — First-class **Resources** entity (books, PDFs, EPUBs, Markdown, video files, video URLs, web pages, audio). Closes the **Resource ↔ Session ↔ Card** chain that v0.7 left implicit. New SQLite tables: `resources`, `course_resources` (M:N, with role), `session_assignments` (with locator + kind), `card_resources` (M:N — cards inherit citations from their spawning session), `project_resources` (optional, M:N). F1 gains first-class Resource registration; F2.3 active-study step opens assigned Resources at locator via external viewers (best-effort deep-linking, embedded players deferred to V2 per §14); F3.7 cards cite Resources directly (in addition to the F3.6 block-ref-to-Note channel). F10.2 ingestion registers the document as a Resource (`kind: pdf|epub|markdown`, `ingested_at` set); new **F10.8 manual Resource registration** path for non-ingestible Resources (physical books, copyrighted videos). Naming pass: domain term "Source" → **Resource** throughout (English idioms like "source of truth" stay); "Source Note" → "Resource Note" (`type: resource-note`); Blueprint IR `source` field → `input` (disambiguates from Resource); `sources` table → folded into `resources`; `source_map` → `resource_map`. §13 gains two new risks (Resource file-path stability, external-viewer deep-linking is best-effort). Phase 2 DoD extended to require an end-to-end loop with a real Resource assignment.
 > - **v0.7** — Three cog-psych additions closing §15 gaps: **F2.5 Pretest step** (errorful generation; Daily Loop becomes 8-step), **F3.5 Calibration** (1-5 confidence on reviews surfacing overconfidence), and **surface-form variability** as a design requirement on F5/F6/F10. Vault contract tightened: **F1 MOC body template locked** with app-managed sections (HTML comment markers); **F7 backlinks consumption** added (app builds its own backlink index, does not depend on Obsidian's cache); **F3.6 block-ref citations** for cards (jump-to-paragraph on review); **vault subfolder support** in §6 (CIC can live in `Learning/` of a larger vault); **F7 Dataview decision locked** — no plugin dependency; **§13 conflict resolution UX** specified with detect (mtime+hash via `vault_writes`)/react (3-way diff dialog)/never-clobber (paused writes while dialog open) rules. Data model gains `confidence` on reviews, `vault_writes` and `pretest_responses` tables.
 > - **v0.6** — Added **F11 Projects: Applied Practice** (§9): optional applied-practice artifact per Course; **multi-milestone** (1..N capabilities applied to one concrete problem); mandatory frontmatter + freeform body with per-domain templates (math/proof, cs/implement, freeform); AI suggestion via `projectSeeds[]` deferred to F10 / Phase 3.5; codified as the system's **transfer / application** mechanism (§15). Extended data model (§8) with `projects` / `project_milestones`; made `sessions.project_id` / `cards.project_id` nullable. Locked: single-Course only (cross-Course handled by Bridges), no auto-grading (§14), Phase 2 ships manual MVP before AI augmentation. Concept ladder updated (§5).
 > - **v0.5** — Locked **Tauri** as the desktop shell (§6, §11; frontend → React + Vite, TS-friendly Tauri plugins) and **native in-app FSRS** for SRS with no Anki dependency (F3). Recorded the **open-source / non-commercial** project stance (§14). Moved Tauri adoption to Phase 0 and reframed Phase 4 as polish + public release (§12). Resolved the desktop + SRS open decisions; added license + vector-store picks (§13).
