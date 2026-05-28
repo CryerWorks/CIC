@@ -29,3 +29,6 @@ export * from "./repositories/milestones";
 // Feature 005: the vault-write fingerprint record (conflict detection). Consumed by the vault
 // layer's VaultWriteLog at its composition root.
 export * from "./repositories/vaultWrites";
+
+// Feature 006: generic app-state key-value settings (e.g. the configured vault path).
+export * from "./repositories/settings";

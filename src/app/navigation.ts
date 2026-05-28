@@ -11,5 +11,6 @@ export const DESTINATIONS: NavDestination[] = [
   { path: "/domains", label: "Domains", implemented: true },
   { path: "/courses", label: "Courses", implemented: false },
   { path: "/review", label: "Review", implemented: false },
+  { path: "/vault", label: "Vault", implemented: true },
   { path: "/style", label: "Style guide", implemented: true },
 ];

@@ -4,6 +4,7 @@ import { DashboardRoute } from "./routes/DashboardRoute";
 import { CoursesRoute } from "./routes/CoursesRoute";
 import { ReviewRoute } from "./routes/ReviewRoute";
 import { DomainsRoute } from "./routes/domains/DomainsRoute";
+import { VaultRoute } from "./routes/vault/VaultRoute";
 import { StyleGuide } from "../styleguide/StyleGuide";
 
 /**
@@ -18,6 +19,7 @@ export function AppRoutes() {
       <Route element={<AppShell />}>
         <Route index element={<DashboardRoute />} />
         <Route path="domains" element={<DomainsRoute />} />
+        <Route path="vault" element={<VaultRoute />} />
         <Route path="courses" element={<CoursesRoute />} />
         <Route path="review" element={<ReviewRoute />} />
         <Route path="style" element={<StyleGuide />} />

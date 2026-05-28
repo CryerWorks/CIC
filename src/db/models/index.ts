@@ -13,3 +13,4 @@ export * from "./pretestResponse";
 export * from "./resource";
 export * from "./links";
 export * from "./vaultWrite";
+export * from "./setting";
