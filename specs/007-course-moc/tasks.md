@@ -23,8 +23,8 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 
 **Purpose**: Create the feature's home; confirm no new tooling needed.
 
-- [ ] T001 Create the feature directory structure `src/features/courses/` with `moc/` and `sync/` subfolders (per plan.md Project Structure).
-- [ ] T002 Confirm no new runtime dependencies are needed and that `tsconfig`/`eslint` already cover `src/**` (the vendor-import rule must remain limited to `src/ai/adapters` + `src/vault/adapters` + `src/db/adapters`; this feature adds no vendor imports).
+- [X] T001 Create the feature directory structure `src/features/courses/` with `moc/` and `sync/` subfolders (per plan.md Project Structure).
+- [X] T002 Confirm no new runtime dependencies are needed and that `tsconfig`/`eslint` already cover `src/**` (the vendor-import rule must remain limited to `src/ai/adapters` + `src/vault/adapters` + `src/db/adapters`; this feature adds no vendor imports).
 
 ---
 
@@ -34,20 +34,20 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T003 [P] Define marker constants (`cic:capability|milestones|resources|projects|sessions|notes`) + the canonical section order in `src/features/courses/moc/markers.ts`.
-- [ ] T004 [P] Define `MocModel`, `MocMilestoneModel`, `ParsedMoc`, and the `MocParseError` class in `src/features/courses/moc/model.ts`.
-- [ ] T005 [P] Define `MocCourseFrontmatterSchema` (zod: `cic-type` literal, `cic-id`, `title`, `domain`, `campaign` nullable) in `src/features/courses/moc/frontmatter.ts`.
-- [ ] T006 [P] Unit tests for milestone line render/parse (all 3 statuses round-trip; checkbox glyph mapping; a comment-less user line parses with `id: null`) in `src/features/courses/moc/milestoneLine.test.ts`.
-- [ ] T007 Implement `renderMilestoneLine` + `parseMilestoneLine` in `src/features/courses/moc/milestoneLine.ts` (depends on T004; satisfies T006).
-- [ ] T008 [P] Unit tests for `buildFrontmatter` + `renderMocBody` (0/1/N milestones; empty capability; all sections present in canonical order; empty skeleton sections) in `src/features/courses/moc/render.test.ts`.
-- [ ] T009 Implement `buildFrontmatter` + `renderMocBody` in `src/features/courses/moc/render.ts` (depends on T003/T004/T005/T007; satisfies T008).
-- [ ] T010 [P] Unit tests for `mergeMocBody` (idempotency on app output; `## Reflections` + inter-section prose preserved across ≥3 merges; missing-section re-insertion; no marker duplication) in `src/features/courses/moc/merge.test.ts`.
-- [ ] T011 Implement `mergeMocBody` in `src/features/courses/moc/merge.ts` (depends on T003/T009; satisfies T010).
-- [ ] T012 [P] Unit tests for `parseMocBody` (extracts capability + ordered milestones; empty sections OK; unterminated marker → `MocParseError`) in `src/features/courses/moc/parse.test.ts`.
-- [ ] T013 Implement `parseMocBody` in `src/features/courses/moc/parse.ts` (depends on T003/T004/T007; satisfies T012).
-- [ ] T014 [P] Unit tests for `mocRelPathFor` (human-readable slug; illegal-char stripping; collision suffixing; never returns a path already in `taken`) in `src/features/courses/moc/filename.test.ts`.
-- [ ] T015 Implement `mocRelPathFor` in `src/features/courses/moc/filename.ts` (satisfies T014).
-- [ ] T016 Export the pure surface (`renderMocBody`, `mergeMocBody`, `parseMocBody`, `buildFrontmatter`, `mocRelPathFor`, `MocCourseFrontmatterSchema`, types) from `src/features/courses/moc/index.ts`.
+- [X] T003 [P] Define marker constants (`cic:capability|milestones|resources|projects|sessions|notes`) + the canonical section order in `src/features/courses/moc/markers.ts`.
+- [X] T004 [P] Define `MocModel`, `MocMilestoneModel`, `ParsedMoc`, and the `MocParseError` class in `src/features/courses/moc/model.ts`.
+- [X] T005 [P] Define `MocCourseFrontmatterSchema` (zod: `cic-type` literal, `cic-id`, `title`, `domain`, `campaign` nullable) in `src/features/courses/moc/frontmatter.ts`.
+- [X] T006 [P] Unit tests for milestone line render/parse (all 3 statuses round-trip; checkbox glyph mapping; a comment-less user line parses with `id: null`) in `src/features/courses/moc/milestoneLine.test.ts`.
+- [X] T007 Implement `renderMilestoneLine` + `parseMilestoneLine` in `src/features/courses/moc/milestoneLine.ts` (depends on T004; satisfies T006).
+- [X] T008 [P] Unit tests for `buildFrontmatter` + `renderMocBody` (0/1/N milestones; empty capability; all sections present in canonical order; empty skeleton sections) in `src/features/courses/moc/render.test.ts`.
+- [X] T009 Implement `buildFrontmatter` + `renderMocBody` in `src/features/courses/moc/render.ts` (depends on T003/T004/T005/T007; satisfies T008).
+- [X] T010 [P] Unit tests for `mergeMocBody` (idempotency on app output; `## Reflections` + inter-section prose preserved across ≥3 merges; missing-section re-insertion; no marker duplication) in `src/features/courses/moc/merge.test.ts`.
+- [X] T011 Implement `mergeMocBody` in `src/features/courses/moc/merge.ts` (depends on T003/T009; satisfies T010).
+- [X] T012 [P] Unit tests for `parseMocBody` (extracts capability + ordered milestones; empty sections OK; unterminated marker → `MocParseError`) in `src/features/courses/moc/parse.test.ts`.
+- [X] T013 Implement `parseMocBody` in `src/features/courses/moc/parse.ts` (depends on T003/T004/T007; satisfies T012).
+- [X] T014 [P] Unit tests for `mocRelPathFor` (human-readable slug; illegal-char stripping; collision suffixing; never returns a path already in `taken`) in `src/features/courses/moc/filename.test.ts`.
+- [X] T015 Implement `mocRelPathFor` in `src/features/courses/moc/filename.ts` (satisfies T014).
+- [X] T016 Export the pure surface (`renderMocBody`, `mergeMocBody`, `parseMocBody`, `buildFrontmatter`, `mocRelPathFor`, `MocCourseFrontmatterSchema`, types) from `src/features/courses/moc/index.ts`.
 
 **Checkpoint**: The MOC document module is complete and green. Stories can begin.
 
