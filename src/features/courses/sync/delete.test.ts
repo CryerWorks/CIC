@@ -5,12 +5,15 @@ import { join } from "node:path";
 import { NodeSqlExecutor } from "../../../db/adapters/node";
 import {
   migrate,
+  attachVault,
   createDomain,
   createCourse,
   createMilestone,
   getCourse,
   listMilestonesByCourse,
 } from "../../../db";
+
+const VID = "vault-1";
 import { makeTempVault, type TempVault } from "../../../vault/test-support";
 import { MocCourseFrontmatterSchema } from "../moc";
 import { materializeCourse } from "./materialize";
@@ -31,11 +34,12 @@ afterEach(() => {
 async function setup() {
   const db = NodeSqlExecutor.open();
   await migrate(db);
-  const domain = await createDomain(db, { name: "Mathematics", color: "#8b6cef" });
+  await attachVault(db, { id: VID, path: "/vault" });
+  const domain = await createDomain(db, VID, { name: "Mathematics", color: "#8b6cef" });
   const course = await createCourse(db, { title: "Real Analysis", domainId: domain.id });
   const m1 = await createMilestone(db, { courseId: course.id, capability: "Define a limit", orderIndex: 0 });
   const tv = tempVault();
-  const deps: CourseSyncDeps = { vault: { reader: tv.reader, writer: tv.writer }, db };
+  const deps: CourseSyncDeps = { vault: { reader: tv.reader, writer: tv.writer, identity: tv.identity }, db };
   return { db, domain, course, m1, tv, deps };
 }
 

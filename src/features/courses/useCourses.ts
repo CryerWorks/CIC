@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useDb } from "../../app/providers/DbProvider";
-import { useVault } from "../../app/providers/VaultProvider";
+import { useVault, useActiveVaultId } from "../../app/providers/VaultProvider";
 import {
   listCourses,
   listDomains,
@@ -85,20 +85,25 @@ const msgOf = (e: unknown, fallback: string) => (e instanceof Error ? e.message 
 export function useCourses() {
   const db = useDb();
   const vault = useVault();
+  // The screen is vault-gated (it calls useVault()), so a vault is always ready here and the id is
+  // non-null; keyed on it so a vault switch re-scopes the list (FR-007).
+  const vaultId = useActiveVaultId();
   const [domains, setDomains] = useState<Domain[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [pendingReapply, setPendingReapply] = useState<MocModel | null>(null);
 
   const refresh = useCallback(async () => {
-    const [d, c] = await Promise.all([listDomains(db), listCourses(db)]);
+    if (!vaultId) return;
+    const [d, c] = await Promise.all([listDomains(db, vaultId), listCourses(db, vaultId)]);
     setDomains(d);
     setCourses(c);
-  }, [db]);
+  }, [db, vaultId]);
 
   useEffect(() => {
+    if (!vaultId) return;
     let active = true;
-    Promise.all([listDomains(db), listCourses(db)])
+    Promise.all([listDomains(db, vaultId), listCourses(db, vaultId)])
       .then(([d, c]) => {
         if (!active) return;
         setDomains(d);
@@ -108,7 +113,7 @@ export function useCourses() {
     return () => {
       active = false;
     };
-  }, [db]);
+  }, [db, vaultId]);
 
   const campaignsFor = useCallback(
     (domainId: string): Promise<Campaign[]> => listCampaignsByDomain(db, domainId),
@@ -272,10 +277,11 @@ export function useCourses() {
   }, [pendingReapply, vault, db, refresh]);
 
   const rescan = useCallback(async (): Promise<RescanReport> => {
-    const report = await rescanCourses({ vault, db });
+    if (!vaultId) return { results: [], imported: 0, updated: 0, skipped: 0 };
+    const report = await rescanCourses({ vault, db }, vaultId);
     await refresh();
     return report;
-  }, [vault, db, refresh]);
+  }, [vault, db, vaultId, refresh]);
 
   const remove = useCallback(
     async (
@@ -294,14 +300,14 @@ export function useCourses() {
   // (the vault is already `ready` here). A manual `rescan()` covers later changes.
   const didBoot = useRef(false);
   useEffect(() => {
-    if (didBoot.current) return;
+    if (didBoot.current || !vaultId) return;
     didBoot.current = true;
-    rescanCourses({ vault, db })
+    rescanCourses({ vault, db }, vaultId)
       .then(() => refresh())
       .catch(() => {
         /* a bad file is reported per-file; a total failure simply leaves the list as-is */
       });
-  }, [vault, db, refresh]);
+  }, [vault, db, vaultId, refresh]);
 
   const groups: DomainGroup[] = domains.map((domain) => ({
     domain,

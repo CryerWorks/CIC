@@ -2,29 +2,33 @@
 import { describe, it, expect } from "vitest";
 import { NodeSqlExecutor } from "../adapters/node";
 import { migrate } from "../migrate";
+import { attachVault } from "./vaults";
 import { createDomain } from "./domains";
 import { createCourse, listCourses, updateCourse, getCourse, deleteCourse } from "./courses";
 import { createMilestone, listMilestonesByCourse } from "./milestones";
 import { createCampaign, listCampaignsByDomain, getCampaign } from "./campaigns";
 
+const VID = "vault-1";
+
 async function freshDb(): Promise<NodeSqlExecutor> {
   const db = NodeSqlExecutor.open();
   await migrate(db);
+  await attachVault(db, { id: VID, path: "/vault" }); // domains.vault_id FK needs a vaults row
   return db;
 }
 
 describe("courses repo additions (US1)", () => {
-  it("listCourses returns all courses ordered by title", async () => {
+  it("listCourses returns the active vault's courses ordered by title", async () => {
     const db = await freshDb();
-    const d = await createDomain(db, { name: "Math", color: "#8b6cef" });
+    const d = await createDomain(db, VID, { name: "Math", color: "#8b6cef" });
     await createCourse(db, { title: "Zeta", domainId: d.id });
     await createCourse(db, { title: "Alpha", domainId: d.id });
-    expect((await listCourses(db)).map((c) => c.title)).toEqual(["Alpha", "Zeta"]);
+    expect((await listCourses(db, VID)).map((c) => c.title)).toEqual(["Alpha", "Zeta"]);
   });
 
   it("updateCourse patches only the provided fields", async () => {
     const db = await freshDb();
-    const d = await createDomain(db, { name: "Math", color: "#8b6cef" });
+    const d = await createDomain(db, VID, { name: "Math", color: "#8b6cef" });
     const c = await createCourse(db, { title: "RA", domainId: d.id });
 
     const withPath = await updateCourse(db, c.id, { mocPath: "Courses/RA.md" });
@@ -38,7 +42,7 @@ describe("courses repo additions (US1)", () => {
 
   it("deleteCourse removes the course and cascades its milestones", async () => {
     const db = await freshDb();
-    const d = await createDomain(db, { name: "Math", color: "#8b6cef" });
+    const d = await createDomain(db, VID, { name: "Math", color: "#8b6cef" });
     const c = await createCourse(db, { title: "RA", domainId: d.id });
     await createMilestone(db, { courseId: c.id, capability: "Define a limit", orderIndex: 0 });
 
@@ -52,7 +56,7 @@ describe("courses repo additions (US1)", () => {
 describe("campaigns repo (US1)", () => {
   it("creates, gets, and lists campaigns by domain ordered by title", async () => {
     const db = await freshDb();
-    const d = await createDomain(db, { name: "Math", color: "#8b6cef" });
+    const d = await createDomain(db, VID, { name: "Math", color: "#8b6cef" });
     const c1 = await createCampaign(db, { title: "Track B", domainId: d.id });
     await createCampaign(db, { title: "Track A", domainId: d.id });
 

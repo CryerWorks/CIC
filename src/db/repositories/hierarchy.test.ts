@@ -5,10 +5,13 @@ import { join } from "node:path";
 import { rmSync } from "node:fs";
 import { NodeSqlExecutor } from "../adapters/node";
 import { migrate } from "../migrate";
+import { attachVault } from "./vaults";
 import { createDomain, getDomain } from "./domains";
 import { createCourse, listCoursesByDomain } from "./courses";
 import { createMilestone, listMilestonesByCourse } from "./milestones";
 import { insert } from "./query";
+
+const VID = "vault-1";
 
 const tempFiles: string[] = [];
 function tempDbPath(): string {
@@ -30,7 +33,8 @@ describe("core hierarchy — round-trip, restart, integrity (US1)", () => {
     // Session 1: create the hierarchy, then close the handle (simulating app shutdown).
     const db1 = NodeSqlExecutor.open(path);
     await migrate(db1);
-    const domain = await createDomain(db1, { name: "Mathematics", color: "#8b6cef" });
+    await attachVault(db1, { id: VID, path: "/vault" });
+    const domain = await createDomain(db1, VID, { name: "Mathematics", color: "#8b6cef" });
     const course = await createCourse(db1, {
       title: "Real Analysis",
       domainId: domain.id,
@@ -68,7 +72,8 @@ describe("core hierarchy — round-trip, restart, integrity (US1)", () => {
   it("rejects a duplicate Domain name (UNIQUE constraint)", async () => {
     const db = NodeSqlExecutor.open();
     await migrate(db);
-    await createDomain(db, { name: "Physics", color: "#00bfbc" });
+    await attachVault(db, { id: VID, path: "/vault" });
+    await createDomain(db, VID, { name: "Physics", color: "#00bfbc" });
     await expect(
       insert(db, "domains", { id: crypto.randomUUID(), name: "Physics", color: "#fff" }),
     ).rejects.toThrow();

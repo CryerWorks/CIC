@@ -2,7 +2,21 @@ import { describe, it, expect } from "vitest";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, makeReadyDb } from "./test-support";
-import { createDomain } from "../db";
+import { fakeConnector, readyResult } from "./providers/vault/test-support";
+import { setSetting, attachVault, createDomain } from "../db";
+import { VAULT_PATH_KEY } from "./providers/vault/keys";
+
+const VID = "vault-1";
+const connectReady = fakeConnector({ fallback: readyResult(0, VID) });
+
+/** A ready (vault-connected) store with a `vaults` row for VID, optionally seeded. */
+async function readyDb(seed?: (db: Awaited<ReturnType<typeof makeReadyDb>>) => Promise<void>) {
+  const db = await makeReadyDb();
+  await setSetting(db, VAULT_PATH_KEY, "/seeded/vault");
+  await attachVault(db, { id: VID, path: "/seeded/vault" });
+  if (seed) await seed(db);
+  return db;
+}
 
 describe("accessibility & keyboard (FR-014/SC-007)", () => {
   it("exposes primary nav as activatable links, marking the active one with aria-current", async () => {
@@ -14,7 +28,7 @@ describe("accessibility & keyboard (FR-014/SC-007)", () => {
   });
 
   it("labels the create form's fields and offers the color choices as real radios", async () => {
-    renderApp({ initialEntries: ["/domains"], initialize: makeReadyDb });
+    renderApp({ initialEntries: ["/domains"], initialize: readyDb, connect: connectReady });
     const user = userEvent.setup();
     await user.click(await screen.findByRole("button", { name: /new domain|create your first/i }));
 
@@ -24,9 +38,8 @@ describe("accessibility & keyboard (FR-014/SC-007)", () => {
   });
 
   it("closes the delete dialog on Escape", async () => {
-    const db = await makeReadyDb();
-    await createDomain(db, { name: "X", color: "#8b6cef" });
-    renderApp({ initialEntries: ["/domains"], initialize: () => Promise.resolve(db) });
+    const db = await readyDb((d) => createDomain(d, VID, { name: "X", color: "#8b6cef" }).then(() => {}));
+    renderApp({ initialEntries: ["/domains"], initialize: () => Promise.resolve(db), connect: connectReady });
     const user = userEvent.setup();
 
     await user.click(await screen.findByRole("button", { name: "Delete" }));

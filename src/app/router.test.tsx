@@ -1,10 +1,21 @@
 import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
-import { renderApp } from "./test-support";
+import { renderApp, makeReadyDb } from "./test-support";
+import { fakeConnector, readyResult } from "./providers/vault/test-support";
+import { setSetting } from "../db";
+import { VAULT_PATH_KEY } from "./providers/vault/keys";
+
+/** A ready (vault-connected) but empty store, so the Dashboard renders onboarding (FR-006). */
+async function readyEmptyDb() {
+  const db = await makeReadyDb();
+  await setSetting(db, VAULT_PATH_KEY, "/seeded/vault");
+  return db;
+}
+const connectReady = fakeConnector({ fallback: readyResult(0, "vault-1") });
 
 describe("routing (FR-001/FR-002/FR-004; SC-001)", () => {
   it("renders the Dashboard at / (onboarding for an empty store)", async () => {
-    renderApp({ initialEntries: ["/"] });
+    renderApp({ initialEntries: ["/"], initialize: readyEmptyDb, connect: connectReady });
     expect(await screen.findByText(/welcome to cic/i)).toBeTruthy();
   });
 
@@ -24,7 +35,7 @@ describe("routing (FR-001/FR-002/FR-004; SC-001)", () => {
   });
 
   it("redirects an unknown path back to the dashboard", async () => {
-    renderApp({ initialEntries: ["/does-not-exist"] });
+    renderApp({ initialEntries: ["/does-not-exist"], initialize: readyEmptyDb, connect: connectReady });
     expect(await screen.findByText(/welcome to cic/i)).toBeTruthy();
   });
 

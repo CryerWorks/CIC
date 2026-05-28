@@ -2,6 +2,8 @@ import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { DbProvider } from "./providers/DbProvider";
 import { VaultProvider } from "./providers/VaultProvider";
+import type { FolderPicker } from "./providers/vault/picker";
+import type { VaultConnector } from "./providers/vault/connect";
 import { AppRoutes } from "./router";
 import { migrate, type SqlExecutor, type SqlValue } from "../db";
 import { NodeSqlExecutor } from "../db/adapters/node";
@@ -32,10 +34,14 @@ export function failingOn(db: SqlExecutor, failOn: RegExp): SqlExecutor {
 export function renderApp(opts: {
   initialEntries?: string[];
   initialize?: () => Promise<SqlExecutor>;
+  /** Test seams forwarded to VaultProvider so a screen that gates on a ready vault (Domains,
+   *  Dashboard, Courses) can be driven without the Tauri runtime. */
+  connect?: VaultConnector;
+  picker?: FolderPicker;
 } = {}) {
   return render(
     <DbProvider initialize={opts.initialize ?? makeReadyDb}>
-      <VaultProvider>
+      <VaultProvider connect={opts.connect} picker={opts.picker}>
         <MemoryRouter initialEntries={opts.initialEntries ?? ["/"]}>
           <AppRoutes />
         </MemoryRouter>

@@ -16,6 +16,9 @@ export type { VaultFs, VaultStat, VaultDirent } from "./fs";
 export type { VaultReader, RawNote } from "./reader";
 export type { VaultWriter, NoteInput, WriteOptions, DeleteOptions } from "./writer";
 
+// The per-vault identity marker capability (Feature 009).
+export type { VaultIdentity } from "./identity";
+
 // The conflict-log seam (implemented over the 003 vault_writes repo at the composition root).
 export type { VaultWriteLog } from "./writeLog";
 

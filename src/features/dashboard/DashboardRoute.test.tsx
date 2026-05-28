@@ -9,6 +9,7 @@ import {
 import { makeReadyDb } from "../../app/test-support";
 import {
   setSetting,
+  attachVault,
   createDomain,
   createCourse,
   createMilestone,
@@ -17,13 +18,21 @@ import {
 } from "../../db";
 import { VAULT_PATH_KEY } from "../../app/providers/vault/keys";
 
-/** A ready (vault-path set) store, seeded via `seed`. */
+/** The active vault id the seeded data belongs to; the fake connector reports the same id. */
+const VID = "vault-A";
+const PATH = "/seeded/vault";
+
+/** A ready (vault-path set) store with a `vaults` row for VID, seeded via `seed`. */
 async function seededDb(seed: (db: SqlExecutor) => Promise<void>): Promise<SqlExecutor> {
   const db = await makeReadyDb();
-  await setSetting(db, VAULT_PATH_KEY, "/seeded/vault");
+  await setSetting(db, VAULT_PATH_KEY, PATH);
+  await attachVault(db, { id: VID, path: PATH });
   await seed(db);
   return db;
 }
+
+/** Connect any path to a ready vault carrying `id` (so useActiveVaultId() returns it). */
+const connectAs = (id: string) => fakeConnector({ fallback: readyResult(0, id) });
 
 async function addMilestones(db: SqlExecutor, courseId: string, status: MilestoneStatus, n: number, from = 0) {
   for (let i = 0; i < n; i += 1) {
@@ -33,8 +42,8 @@ async function addMilestones(db: SqlExecutor, courseId: string, status: Mileston
 
 /** Math (Real Analysis: 12 done, MOC) + CS (Algorithms: 6 in-progress, 12 todo) → 30 milestones, 40% done. */
 async function seedTwoDomains(db: SqlExecutor) {
-  const math = await createDomain(db, { name: "Math", color: "#8b6cef" });
-  const cs = await createDomain(db, { name: "CS", color: "#00bfbc" });
+  const math = await createDomain(db, VID, { name: "Math", color: "#8b6cef" });
+  const cs = await createDomain(db, VID, { name: "CS", color: "#00bfbc" });
   const ra = await createCourse(db, { title: "Real Analysis", domainId: math.id, mocPath: "Courses/Real Analysis.md" });
   await addMilestones(db, ra.id, "done", 12);
   const algo = await createCourse(db, { title: "Algorithms", domainId: cs.id });
@@ -42,18 +51,20 @@ async function seedTwoDomains(db: SqlExecutor) {
   await addMilestones(db, algo.id, "todo", 12, 6);
 }
 
-describe("DashboardRoute — vault status (FR-008)", () => {
-  it("shows the 'choose your vault' banner when no vault is connected", async () => {
-    renderWithVault({ children: <DashboardRoute />, connect: fakeConnector({ fallback: readyResult(0) }) });
+describe("DashboardRoute — vault gating (FR-006)", () => {
+  it("guides the user to connect a vault when none is connected (no data, no zero grid)", async () => {
+    renderWithVault({ children: <DashboardRoute />, connect: connectAs(VID) });
     expect(await screen.findByText(/no vault connected/i)).toBeTruthy();
     expect(screen.getByRole("link", { name: /choose your vault/i }).getAttribute("href")).toBe("/vault");
+    expect(screen.queryByText("Command Center")).toBeNull();
+    expect(screen.queryByText(/welcome to cic/i)).toBeNull();
   });
 
-  it("hides the banner and shows a 'Vault connected' indicator once a vault is ready (C2)", async () => {
+  it("shows a 'Vault connected' indicator once a vault is ready", async () => {
     const db = await seededDb(seedTwoDomains);
     renderWithVault({
       children: <DashboardRoute />,
-      connect: fakeConnector({ fallback: readyResult(0) }),
+      connect: connectAs(VID),
       initialize: () => Promise.resolve(db),
     });
     expect(await screen.findByText(/vault connected/i)).toBeTruthy();
@@ -61,10 +72,10 @@ describe("DashboardRoute — vault status (FR-008)", () => {
   });
 });
 
-describe("DashboardRoute — real summary (US1 · SC-001/SC-002)", () => {
+describe("DashboardRoute — real summary, scoped to the active vault (US1 · SC-001)", () => {
   it("renders real totals and milestone progress (12/30 → 40%)", async () => {
     const db = await seededDb(seedTwoDomains);
-    renderWithVault({ children: <DashboardRoute />, initialize: () => Promise.resolve(db) });
+    renderWithVault({ children: <DashboardRoute />, connect: connectAs(VID), initialize: () => Promise.resolve(db) });
 
     expect(await screen.findByText("Command Center")).toBeTruthy();
     expect(screen.getByText("Milestones")).toBeTruthy(); // a totals StatCell label (unique)
@@ -72,12 +83,25 @@ describe("DashboardRoute — real summary (US1 · SC-001/SC-002)", () => {
     expect(screen.getByText(/40%/)).toBeTruthy(); // 12 of 30 done
   });
 
+  it("shows only the ACTIVE vault's data — seeded under A, but B is active → onboarding, not A's data", async () => {
+    const db = await seededDb(seedTwoDomains); // data belongs to VID ("vault-A")
+    renderWithVault({
+      children: <DashboardRoute />,
+      connect: connectAs("vault-B"), // a different active vault
+      initialize: () => Promise.resolve(db),
+    });
+
+    expect(await screen.findByText(/welcome to cic/i)).toBeTruthy(); // B is empty → onboarding
+    expect(screen.queryByText("Command Center")).toBeNull();
+    expect(screen.queryByText(/Real Analysis/)).toBeNull(); // A's course never leaks into B
+  });
+
   it("renders a Course with no milestones without NaN%", async () => {
     const db = await seededDb(async (d) => {
-      const dom = await createDomain(d, { name: "Math", color: "#8b6cef" });
+      const dom = await createDomain(d, VID, { name: "Math", color: "#8b6cef" });
       await createCourse(d, { title: "Empty", domainId: dom.id });
     });
-    renderWithVault({ children: <DashboardRoute />, initialize: () => Promise.resolve(db) });
+    renderWithVault({ children: <DashboardRoute />, connect: connectAs(VID), initialize: () => Promise.resolve(db) });
 
     expect(await screen.findByText(/no milestones yet/i)).toBeTruthy();
     expect(screen.queryByText(/NaN/)).toBeNull();
@@ -87,11 +111,11 @@ describe("DashboardRoute — real summary (US1 · SC-001/SC-002)", () => {
 describe("DashboardRoute — allocation & navigation (US2 · FR-003/FR-004)", () => {
   it("shows per-domain allocation incl. a zero-course domain", async () => {
     const db = await seededDb(async (d) => {
-      const math = await createDomain(d, { name: "Math", color: "#8b6cef" });
-      await createDomain(d, { name: "Zoology", color: "#ffaa00" }); // no courses
+      const math = await createDomain(d, VID, { name: "Math", color: "#8b6cef" });
+      await createDomain(d, VID, { name: "Zoology", color: "#ffaa00" }); // no courses
       await createCourse(d, { title: "Real Analysis", domainId: math.id });
     });
-    renderWithVault({ children: <DashboardRoute />, initialize: () => Promise.resolve(db) });
+    renderWithVault({ children: <DashboardRoute />, connect: connectAs(VID), initialize: () => Promise.resolve(db) });
 
     expect(await screen.findByText("Zoology")).toBeTruthy(); // still listed
     expect(screen.getByText(/0 courses/)).toBeTruthy();
@@ -99,7 +123,7 @@ describe("DashboardRoute — allocation & navigation (US2 · FR-003/FR-004)", ()
 
   it("links a Course to /courses and tags those with a MOC", async () => {
     const db = await seededDb(seedTwoDomains);
-    renderWithVault({ children: <DashboardRoute />, initialize: () => Promise.resolve(db) });
+    renderWithVault({ children: <DashboardRoute />, connect: connectAs(VID), initialize: () => Promise.resolve(db) });
 
     const link = await screen.findByRole("link", { name: /Real Analysis/i });
     expect(link.getAttribute("href")).toBe("/courses");
@@ -107,9 +131,10 @@ describe("DashboardRoute — allocation & navigation (US2 · FR-003/FR-004)", ()
   });
 });
 
-describe("DashboardRoute — onboarding & honest tiles (US3 · SC-003/SC-004 · Constitution III)", () => {
-  it("guides a brand-new user to create a Domain instead of a zero grid", async () => {
-    renderWithVault({ children: <DashboardRoute />, connect: fakeConnector({ fallback: readyResult(0) }) });
+describe("DashboardRoute — onboarding & honest tiles (US3 · Constitution III)", () => {
+  it("guides a brand-new user (vault ready, empty data) to create a Domain instead of a zero grid", async () => {
+    const db = await seededDb(async () => {}); // vault ready, no domains
+    renderWithVault({ children: <DashboardRoute />, connect: connectAs(VID), initialize: () => Promise.resolve(db) });
 
     expect(await screen.findByText(/welcome to cic/i)).toBeTruthy();
     expect(screen.getByRole("link", { name: /create your first domain/i }).getAttribute("href")).toBe("/domains");
@@ -118,7 +143,7 @@ describe("DashboardRoute — onboarding & honest tiles (US3 · SC-003/SC-004 · 
 
   it("shows the retention tiles as labeled 'Phase 2' placeholders with no fabricated data", async () => {
     const db = await seededDb(seedTwoDomains);
-    renderWithVault({ children: <DashboardRoute />, initialize: () => Promise.resolve(db) });
+    renderWithVault({ children: <DashboardRoute />, connect: connectAs(VID), initialize: () => Promise.resolve(db) });
 
     await screen.findByText("Command Center");
     expect(screen.getAllByText("Phase 2").length).toBe(5); // streak/protocol/heatmap/sessions/due-cards

@@ -61,20 +61,34 @@ const AllocationRow = z.object({
   milestone_count: z.number().int().nonnegative(),
 });
 
-/** Aggregate the dashboard summary. ~3 queries regardless of how many Courses exist. */
-export async function getDashboardSummary(db: SqlExecutor): Promise<DashboardSummary> {
+/** Aggregate the dashboard summary for the active vault (Feature 009 — scoped to the vault's
+ *  Domains). ~3 queries regardless of how many Courses exist. */
+export async function getDashboardSummary(
+  db: SqlExecutor,
+  vaultId: string,
+): Promise<DashboardSummary> {
   const [totals] = await selectParsed(
     db,
     TotalsRow,
-    `SELECT (SELECT COUNT(*) FROM domains)    AS domains,
-            (SELECT COUNT(*) FROM courses)    AS courses,
-            (SELECT COUNT(*) FROM milestones) AS milestones`,
+    `SELECT (SELECT COUNT(*) FROM domains WHERE vault_id = ?) AS domains,
+            (SELECT COUNT(*) FROM courses c
+               JOIN domains d ON d.id = c.domain_id WHERE d.vault_id = ?) AS courses,
+            (SELECT COUNT(*) FROM milestones m
+               JOIN courses c ON c.id = m.course_id
+               JOIN domains d ON d.id = c.domain_id WHERE d.vault_id = ?) AS milestones`,
+    [vaultId, vaultId, vaultId],
   );
 
   const statusRows = await selectParsed(
     db,
     StatusCountRow,
-    "SELECT status, COUNT(*) AS n FROM milestones GROUP BY status",
+    `SELECT m.status AS status, COUNT(*) AS n
+     FROM milestones m
+     JOIN courses c ON c.id = m.course_id
+     JOIN domains d ON d.id = c.domain_id
+     WHERE d.vault_id = ?
+     GROUP BY m.status`,
+    [vaultId],
   );
   const countFor = (s: MilestoneStatus) => statusRows.find((r) => r.status === s)?.n ?? 0;
   const todo = countFor("todo");
@@ -98,8 +112,10 @@ export async function getDashboardSummary(db: SqlExecutor): Promise<DashboardSum
      FROM domains d
      LEFT JOIN courses c    ON c.domain_id = d.id
      LEFT JOIN milestones m ON m.course_id = c.id
+     WHERE d.vault_id = ?
      GROUP BY d.id, d.name, d.color
      ORDER BY d.name`,
+    [vaultId],
   );
   const allocation: DomainAllocation[] = allocationRows.map((r) => ({
     id: r.id,

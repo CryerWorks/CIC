@@ -8,10 +8,10 @@ import { DomainAllocation } from "./DomainAllocation";
 import { DeferredTiles } from "./DeferredTiles";
 
 /**
- * The Command Center Dashboard (F8) — a real, read-only summary of the Domain → Course → Milestone
- * hierarchy. Not vault-gated (the data is SQLite-only); vault status is surfaced alongside. It does
- * gate the data subtree on the store being ready (so it is self-sufficient even outside the
- * AppShell store-gate). The retention tiles are honest Phase-2 placeholders (see DeferredTiles).
+ * The Command Center Dashboard (F8) — a real, read-only summary of the active vault's Domain →
+ * Course → Milestone hierarchy (vault-scoped per Feature 009). Gated on both the store being ready
+ * AND a connected vault: with no vault it guides the user to connect one rather than showing another
+ * vault's data or a zero grid (FR-006). The retention tiles are honest Phase-2 placeholders.
  */
 export function DashboardRoute() {
   const db = useDbState();
@@ -19,25 +19,23 @@ export function DashboardRoute() {
 
   return (
     <div className="flex flex-col gap-6">
-      {vault.status === "unset" && (
+      {db.status === "error" ? (
+        <Callout variant="danger" title="Couldn't load your data">
+          {db.error.message}
+        </Callout>
+      ) : db.status !== "ready" || vault.status === "checking" ? (
+        <p className="text-text-dim">Loading…</p>
+      ) : vault.status !== "ready" ? (
         <Callout variant="info" title="No vault connected">
           <span>
-            Choose your Obsidian vault to start capturing knowledge.{" "}
+            Connect your Obsidian vault to see this vault's dashboard.{" "}
             <Link to="/vault" className="font-medium text-brand underline">
               Choose your vault
             </Link>
           </span>
         </Callout>
-      )}
-
-      {db.status === "error" ? (
-        <Callout variant="danger" title="Couldn't load your data">
-          {db.error.message}
-        </Callout>
-      ) : db.status !== "ready" ? (
-        <p className="text-text-dim">Loading…</p>
       ) : (
-        <DashboardView vaultReady={vault.status === "ready"} />
+        <DashboardView vaultReady />
       )}
     </div>
   );

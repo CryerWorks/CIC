@@ -1,12 +1,40 @@
 import { useState } from "react";
-import { Panel, Button } from "../../../components/ui";
+import { Link } from "react-router-dom";
+import { Panel, Button, Callout } from "../../../components/ui";
+import { useVaultState } from "../../providers/VaultProvider";
 import { useDomains } from "./useDomains";
 import { DomainForm } from "./DomainForm";
 import { DeleteDomainDialog } from "./DeleteDomainDialog";
 import type { Domain } from "../../../db";
 
-/** The first data-backed screen: list / create / edit / delete user-defined Domains. */
+/** Domains screen. Gates on a connected vault (Domains belong to the active vault per Feature 009),
+ *  then delegates to the manager subtree (which reads the active vault id via `useDomains`). */
 export function DomainsRoute() {
+  const vault = useVaultState();
+
+  if (vault.status === "checking") {
+    return <p className="text-text-dim">Loading…</p>;
+  }
+  if (vault.status !== "ready") {
+    return (
+      <div className="mx-auto max-w-2xl">
+        <Callout variant="info" title="Connect a vault first">
+          <span>
+            Domains belong to a vault.{" "}
+            <Link to="/vault" className="font-medium text-brand underline">
+              Choose your vault
+            </Link>{" "}
+            to start organizing your learning.
+          </span>
+        </Callout>
+      </div>
+    );
+  }
+  return <DomainsManager />;
+}
+
+/** The list / create / edit / delete manager — runs only inside a vault-ready subtree. */
+function DomainsManager() {
   const { domains, loading, create, edit, remove } = useDomains();
   const [editing, setEditing] = useState<Domain | "new" | null>(null);
   const [deleting, setDeleting] = useState<Domain | null>(null);

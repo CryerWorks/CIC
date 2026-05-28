@@ -10,10 +10,13 @@ import {
   readyResult,
 } from "../../app/providers/vault/test-support";
 import { makeReadyDb } from "../../app/test-support";
-import { createDomain, setSetting, type SqlExecutor } from "../../db";
+import { createDomain, setSetting, attachVault, type SqlExecutor } from "../../db";
 import { VAULT_PATH_KEY } from "../../app/providers/vault/keys";
 import { makeTempVault, type TempVault } from "../../vault/test-support";
+import { createVaultIdentity } from "../../vault/identity";
 import type { VaultConnector } from "../../app/providers/vault/connect";
+
+const VID = "vault-courses";
 
 const vaults: TempVault[] = [];
 afterEach(() => {
@@ -21,18 +24,24 @@ afterEach(() => {
 });
 
 /** A connector that hands back a real temp vault, so the create→materialize→write path runs
- *  end-to-end against a genuine filesystem (Tauri-free). */
+ *  end-to-end against a genuine filesystem (Tauri-free). Reports the active vault id VID. */
 function realVaultConnector(): { connect: VaultConnector; tv: TempVault } {
   const tv = makeTempVault();
   vaults.push(tv);
   const connect: VaultConnector = () =>
-    Promise.resolve({ ok: true, vault: { reader: tv.reader, writer: tv.writer }, noteCount: 0 });
+    Promise.resolve({
+      ok: true,
+      vault: { reader: tv.reader, writer: tv.writer, identity: createVaultIdentity(tv.fs, tv.vaultPath) },
+      noteCount: 0,
+      id: VID,
+    });
   return { connect, tv };
 }
 
 async function readyDb(seed?: (db: SqlExecutor) => Promise<void>): Promise<SqlExecutor> {
   const db = await makeReadyDb();
   await setSetting(db, VAULT_PATH_KEY, "/seeded"); // a stored path → VaultProvider boots to `ready`
+  await attachVault(db, { id: VID, path: "/seeded" }); // domains.vault_id FK needs a vaults row
   if (seed) await seed(db);
   return db;
 }
@@ -57,7 +66,7 @@ describe("CoursesRoute — vault gating (US1 · FR-014)", () => {
 
 describe("CoursesRoute — create flow (US1 · FR-001/006/008)", () => {
   it("creates a Course, lists it, and writes its MOC into the vault", async () => {
-    const db = await readyDb((d) => createDomain(d, { name: "Mathematics", color: "#8b6cef" }).then(() => {}));
+    const db = await readyDb((d) => createDomain(d, VID, { name: "Mathematics", color: "#8b6cef" }).then(() => {}));
     const { connect, tv } = realVaultConnector();
     renderWithVault({ children: <CoursesRoute />, connect, initialize: () => Promise.resolve(db) });
 
@@ -73,7 +82,7 @@ describe("CoursesRoute — create flow (US1 · FR-001/006/008)", () => {
   });
 
   it("blocks submit without a Domain", async () => {
-    const db = await readyDb((d) => createDomain(d, { name: "Mathematics", color: "#8b6cef" }).then(() => {}));
+    const db = await readyDb((d) => createDomain(d, VID, { name: "Mathematics", color: "#8b6cef" }).then(() => {}));
     const { connect } = realVaultConnector();
     renderWithVault({ children: <CoursesRoute />, connect, initialize: () => Promise.resolve(db) });
 
@@ -87,7 +96,7 @@ describe("CoursesRoute — create flow (US1 · FR-001/006/008)", () => {
 });
 
 async function seedDomainDb() {
-  return readyDb((d) => createDomain(d, { name: "Mathematics", color: "#8b6cef" }).then(() => {}));
+  return readyDb((d) => createDomain(d, VID, { name: "Mathematics", color: "#8b6cef" }).then(() => {}));
 }
 
 async function createCourseInUI(title: string) {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useDb } from "../../app/providers/DbProvider";
+import { useActiveVaultId } from "../../app/providers/VaultProvider";
 import {
   getDashboardSummary,
   listCourses,
@@ -9,10 +10,11 @@ import {
 } from "../../db";
 
 /**
- * Dashboard screen state (Feature 008 / F8). Loads the read-only aggregate summary + the Course
- * list, and buckets Courses into their Domain (using `summary.allocation`) for the at-a-glance
- * list. Read-only — no mutators. Re-reads on mount so the screen reflects current data each open
- * (FR-009). Does not require a vault (the data is vault-independent).
+ * Dashboard screen state (Feature 008 / F8, vault-scoped per 009). Loads the read-only aggregate
+ * summary + the Course list **for the active vault**, and buckets Courses into their Domain (using
+ * `summary.allocation`) for the at-a-glance list. Read-only — no mutators. Keyed on the active
+ * vault id, so switching vaults re-scopes every tile (FR-007); with no vault it stays empty (the
+ * route shows connect-a-vault guidance instead — FR-006).
  */
 
 export interface DashboardCourseGroup {
@@ -28,13 +30,22 @@ export interface DashboardData {
 
 export function useDashboard(): DashboardData {
   const db = useDb();
+  const vaultId = useActiveVaultId();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [courseGroups, setCourseGroups] = useState<DashboardCourseGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!vaultId) {
+      // No active vault → nothing to scope to; the route shows connect-a-vault guidance.
+      setSummary(null);
+      setCourseGroups([]);
+      setLoading(false);
+      return;
+    }
     let active = true;
-    Promise.all([getDashboardSummary(db), listCourses(db)])
+    setLoading(true);
+    Promise.all([getDashboardSummary(db, vaultId), listCourses(db, vaultId)])
       .then(([s, courses]) => {
         if (!active) return;
         setSummary(s);
@@ -49,7 +60,7 @@ export function useDashboard(): DashboardData {
     return () => {
       active = false;
     };
-  }, [db]);
+  }, [db, vaultId]);
 
   return { loading, summary, courseGroups };
 }

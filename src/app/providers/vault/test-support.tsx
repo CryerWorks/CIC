@@ -10,6 +10,7 @@ import type { SqlExecutor } from "../../../db";
 import type { Vault } from "../../../vault";
 import { VaultReader } from "../../../vault/reader";
 import { VaultWriter } from "../../../vault/writer";
+import { createVaultIdentity } from "../../../vault/identity";
 import { NodeVaultFs } from "../../../vault/adapters/node";
 import { InMemoryWriteLog } from "../../../vault/test-support";
 
@@ -23,11 +24,12 @@ export function stubVault(): Vault {
   return {
     reader: new VaultReader(fs, "/__stub__"),
     writer: new VaultWriter(fs, "/__stub__", new InMemoryWriteLog()),
+    identity: createVaultIdentity(fs, "/__stub__"),
   };
 }
 
-export function readyResult(noteCount = 0): ConnectResult {
-  return { ok: true, vault: stubVault(), noteCount };
+export function readyResult(noteCount = 0, id = "stub-vault"): ConnectResult {
+  return { ok: true, vault: stubVault(), noteCount, id };
 }
 
 export function unavailableResult(message = "vault unavailable"): ConnectResult {

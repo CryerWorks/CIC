@@ -12,12 +12,15 @@ import { type SqlExecutor, recordVaultWrite, getVaultWrite, forgetVaultWrite } f
 import { TauriVaultFs } from "./adapters/tauri";
 import { VaultReader } from "./reader";
 import { VaultWriter } from "./writer";
+import { createVaultIdentity, type VaultIdentity } from "./identity";
 import type { VaultWriteLog } from "./writeLog";
 import type { Fingerprint } from "./errors";
 
 export interface Vault {
   reader: VaultReader;
   writer: VaultWriter;
+  /** The per-vault identity marker capability (Feature 009) — establishes/reads `.cic/vault.json`. */
+  identity: VaultIdentity;
 }
 
 export function createVault(opts: { vaultPath: string; db: SqlExecutor }): Vault {
@@ -41,5 +44,6 @@ export function createVault(opts: { vaultPath: string; db: SqlExecutor }): Vault
   return {
     reader: new VaultReader(fs, vaultPath, log),
     writer: new VaultWriter(fs, vaultPath, log),
+    identity: createVaultIdentity(fs, vaultPath),
   };
 }

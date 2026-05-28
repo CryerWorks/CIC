@@ -26,7 +26,7 @@ import { createConnector, type VaultConnector } from "./vault/connect";
 export type VaultState =
   | { status: "checking" }
   | { status: "unset" }
-  | { status: "ready"; path: string; vault: Vault; noteCount: number }
+  | { status: "ready"; path: string; vault: Vault; noteCount: number; id: string }
   | { status: "unavailable"; path: string; error: Error };
 
 export interface VaultActions {
@@ -86,7 +86,7 @@ export function VaultProvider({ children, picker = defaultPicker, connect: conne
       if (cancelled) return;
       setState(
         result.ok
-          ? { status: "ready", path, vault: result.vault, noteCount: result.noteCount }
+          ? { status: "ready", path, vault: result.vault, noteCount: result.noteCount, id: result.id }
           : { status: "unavailable", path, error: result.error },
       );
     })().catch((err) => {
@@ -106,7 +106,7 @@ export function VaultProvider({ children, picker = defaultPicker, connect: conne
     const result = await connect(picked);
     if (result.ok) {
       await setSetting(db, VAULT_PATH_KEY, picked); // persist only on success (R5)
-      setState({ status: "ready", path: picked, vault: result.vault, noteCount: result.noteCount });
+      setState({ status: "ready", path: picked, vault: result.vault, noteCount: result.noteCount, id: result.id });
     } else {
       setActionError(result.error); // surfaced; current state untouched
     }
@@ -124,7 +124,7 @@ export function VaultProvider({ children, picker = defaultPicker, connect: conne
     const result = await connect(path);
     setState(
       result.ok
-        ? { status: "ready", path, vault: result.vault, noteCount: result.noteCount }
+        ? { status: "ready", path, vault: result.vault, noteCount: result.noteCount, id: result.id }
         : { status: "unavailable", path, error: result.error },
     );
   }, [db, connect, state]);
@@ -146,6 +146,14 @@ function useVaultContext(): VaultContextValue {
 /** The raw vault state — for the Vault screen and the first-run banner. */
 export function useVaultState(): VaultState {
   return useVaultContext().state;
+}
+
+/** The active vault's stable id (Feature 009), or `null` unless a vault is ready. The reactivity
+ *  + scoping key: screen hooks key their loads on it so a vault switch re-scopes every view, and
+ *  pass it to the per-vault repositories. */
+export function useActiveVaultId(): string | null {
+  const { state } = useVaultContext();
+  return state.status === "ready" ? state.id : null;
 }
 
 /** The active vault handle. MUST be called only when ready (knowledge features gate on it);
