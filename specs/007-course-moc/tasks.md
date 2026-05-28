@@ -61,23 +61,23 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 
 ### Repositories (db spine additions)
 
-- [ ] T017 [P] [US1] Add `updateCourse(db,id,patch)` + `listCourses(db)` to `src/db/repositories/courses.ts` (per contracts/course-repos.md).
-- [ ] T018 [P] [US1] Create `src/db/repositories/campaigns.ts` (`listCampaignsByDomain`, `createCampaign`, `getCampaign`) and export it from `src/db/index.ts`.
-- [ ] T019 [US1] Repository tests for the US1 additions (updateCourse patch + round-trip; listCourses; campaign create/list) in `src/db/repositories/courses.test.ts` (depends on T017/T018).
+- [X] T017 [P] [US1] Add `updateCourse(db,id,patch)` + `listCourses(db)` to `src/db/repositories/courses.ts` (per contracts/course-repos.md).
+- [X] T018 [P] [US1] Create `src/db/repositories/campaigns.ts` (`listCampaignsByDomain`, `createCampaign`, `getCampaign`) and export it from `src/db/index.ts`.
+- [X] T019 [US1] Repository tests for the US1 additions (updateCourse patch + round-trip; listCourses; campaign create/list) in `src/db/repositories/courses.test.ts` (depends on T017/T018).
 
 ### Sync (materialize)
 
-- [ ] T020 [US1] Integration test for materialize/new (node temp vault + `node:sqlite`): a Course + 2 milestones → `Courses/<Title>.md` with capability + two milestone lines; `course.moc_path` persisted — in `src/features/courses/sync/materialize.test.ts`.
-- [ ] T021 [US1] Implement `materializeCourse(deps, model)` in `src/features/courses/sync/materialize.ts`: pick path (`course.moc_path` else `mocRelPathFor` over existing paths), render-or-merge, `writer.writeNote`, persist `moc_path` via `updateCourse`; return `MaterializeResult` (depends on T016/T017; satisfies T020).
+- [X] T020 [US1] Integration test for materialize/new (node temp vault + `node:sqlite`): a Course + 2 milestones → `Courses/<Title>.md` with capability + two milestone lines; `course.moc_path` persisted — in `src/features/courses/sync/materialize.test.ts`.
+- [X] T021 [US1] Implement `materializeCourse(deps, model)` in `src/features/courses/sync/materialize.ts`: pick path (`course.moc_path` else `mocRelPathFor` over existing paths), render-or-merge, `writer.writeNote`, persist `moc_path` via `updateCourse`; return `MaterializeResult` (depends on T016/T017; satisfies T020).
 
 ### UI (Courses screen)
 
-- [ ] T022 [P] [US1] Implement the `useCourses` hook (list grouped by Domain; create Course + Milestones; create a Campaign inline via `createCampaign` when the form supplies a new name; assemble `MocModel` + call `materializeCourse`; optimistic pattern mirroring `useDomains`) in `src/features/courses/useCourses.ts`.
-- [ ] T023 [P] [US1] Implement `CourseForm` (title; **required** Domain select; optional Campaign — pick an existing one *or* create a new Campaign inline by name; Capability textarea) in `src/features/courses/CourseForm.tsx`. The form MUST block submit without a Domain (FR-005).
-- [ ] T024 [P] [US1] Implement `MilestonesEditor` (add ordered milestones with capability + status) in `src/features/courses/MilestonesEditor.tsx`.
-- [ ] T025 [US1] Implement `CoursesRoute` (vault-gated via `useVaultState()`: guidance→`/vault` when not ready; empty state; when no Domain exists, guide to create one first per US1-AS3; list grouped by Domain; new-course flow) in `src/features/courses/CoursesRoute.tsx` (depends on T022/T023/T024).
-- [ ] T026 [US1] Wire the route: import `CoursesRoute` from `src/features/courses/` in `src/app/router.tsx`, set Courses `implemented: true` in `src/app/navigation.ts`, and delete the placeholder `src/app/routes/CoursesRoute.tsx` (depends on T025).
-- [ ] T027 [US1] Component test for the create flow + vault-gating (unset vault → guidance link to `/vault`; ready vault → create → course appears; submit blocked without a Domain) in `src/features/courses/CoursesRoute.test.tsx` (depends on T025/T026).
+- [X] T022 [P] [US1] Implement the `useCourses` hook (list grouped by Domain; create Course + Milestones; create a Campaign inline via `createCampaign` when the form supplies a new name; assemble `MocModel` + call `materializeCourse`; optimistic pattern mirroring `useDomains`) in `src/features/courses/useCourses.ts`.
+- [X] T023 [P] [US1] Implement `CourseForm` (title; **required** Domain select; optional Campaign — pick an existing one *or* create a new Campaign inline by name; Capability textarea) in `src/features/courses/CourseForm.tsx`. The form MUST block submit without a Domain (FR-005).
+- [X] T024 [P] [US1] Implement `MilestonesEditor` (add ordered milestones with capability + status) in `src/features/courses/MilestonesEditor.tsx`.
+- [X] T025 [US1] Implement `CoursesRoute` (vault-gated via `useVaultState()`: guidance→`/vault` when not ready; empty state; when no Domain exists, guide to create one first per US1-AS3; list grouped by Domain; new-course flow) in `src/features/courses/CoursesRoute.tsx` (depends on T022/T023/T024).
+- [X] T026 [US1] Wire the route: import `CoursesRoute` from `src/features/courses/` in `src/app/router.tsx`, set Courses `implemented: true` in `src/app/navigation.ts`, and delete the placeholder `src/app/routes/CoursesRoute.tsx` (depends on T025).
+- [X] T027 [US1] Component test for the create flow + vault-gating (unset vault → guidance link to `/vault`; ready vault → create → course appears; submit blocked without a Domain) in `src/features/courses/CoursesRoute.test.tsx` (depends on T025/T026).
 
 **Checkpoint**: A Course created in-app materializes as a clean MOC in the vault. MVP complete.
 

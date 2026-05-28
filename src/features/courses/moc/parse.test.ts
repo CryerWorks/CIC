@@ -40,7 +40,7 @@ describe("parseMocBody (R7)", () => {
     );
     const result = parseMocBody(body);
     if (result instanceof MocParseError) throw result;
-    expect(result.milestones.at(-1)).toEqual({
+    expect(result.milestones[result.milestones.length - 1]).toEqual({
       id: null,
       capability: "Hand-added goal",
       status: "todo",

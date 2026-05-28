@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { AppShell } from "./layout/AppShell";
 import { DashboardRoute } from "./routes/DashboardRoute";
-import { CoursesRoute } from "./routes/CoursesRoute";
+import { CoursesRoute } from "../features/courses/CoursesRoute";
 import { ReviewRoute } from "./routes/ReviewRoute";
 import { DomainsRoute } from "./routes/domains/DomainsRoute";
 import { VaultRoute } from "./routes/vault/VaultRoute";

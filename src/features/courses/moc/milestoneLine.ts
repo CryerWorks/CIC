@@ -35,7 +35,7 @@ export function parseMilestoneLine(line: string): ParsedMilestoneLine | null {
   if (!task) return null;
 
   const glyph = task[1];
-  let rest = task[2];
+  const rest = task[2];
 
   const comment = COMMENT_RE.exec(rest);
   if (comment) {
