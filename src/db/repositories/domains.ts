@@ -39,3 +39,15 @@ export async function updateDomain(
 export async function deleteDomain(db: SqlExecutor, id: string): Promise<void> {
   await db.execute("DELETE FROM domains WHERE id = ?", [id]);
 }
+
+/** Default color for a Domain auto-created during read-back import (Feature 007). The brand
+ *  purple — user-editable later on the Domains screen. */
+const IMPORT_DOMAIN_COLOR = "#8b6cef";
+
+/** Match an existing Domain by name (case-insensitive) or create one (read-back import). */
+export async function findOrCreateDomainByName(db: SqlExecutor, name: string): Promise<Domain> {
+  const existing = (await listDomains(db)).find(
+    (d) => d.name.toLowerCase() === name.toLowerCase(),
+  );
+  return existing ?? createDomain(db, { name, color: IMPORT_DOMAIN_COLOR });
+}

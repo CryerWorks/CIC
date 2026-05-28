@@ -25,6 +25,10 @@ export class InMemoryWriteLog implements VaultWriteLog {
   async record(relPath: string, fingerprint: Fingerprint): Promise<void> {
     this.map.set(relPath, fingerprint);
   }
+
+  async forget(relPath: string): Promise<void> {
+    this.map.delete(relPath);
+  }
 }
 
 export interface TempVault {

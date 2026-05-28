@@ -8,9 +8,14 @@ describe("routing (FR-001/FR-002/FR-004; SC-001)", () => {
     expect(await screen.findByText(/dashboard arrives in a later feature/i)).toBeTruthy();
   });
 
-  it("renders the Courses and Review placeholders", async () => {
+  it("renders the Review placeholder", async () => {
+    renderApp({ initialEntries: ["/review"] });
+    expect(await screen.findByText(/review arrives in a later feature/i)).toBeTruthy();
+  });
+
+  it("gates Courses on a connected vault (unset → guidance)", async () => {
     renderApp({ initialEntries: ["/courses"] });
-    expect(await screen.findByText(/courses arrives in a later feature/i)).toBeTruthy();
+    expect(await screen.findByText(/connect a vault first/i)).toBeTruthy();
   });
 
   it("renders the style guide at /style", async () => {

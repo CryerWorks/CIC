@@ -9,7 +9,7 @@ export interface NavDestination {
 export const DESTINATIONS: NavDestination[] = [
   { path: "/", label: "Dashboard", implemented: false },
   { path: "/domains", label: "Domains", implemented: true },
-  { path: "/courses", label: "Courses", implemented: false },
+  { path: "/courses", label: "Courses", implemented: true },
   { path: "/review", label: "Review", implemented: false },
   { path: "/vault", label: "Vault", implemented: true },
   { path: "/style", label: "Style guide", implemented: true },

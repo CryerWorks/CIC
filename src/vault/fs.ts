@@ -30,6 +30,7 @@ export interface VaultFs {
   readDir(absPath: string): Promise<VaultDirent[]>;
   mkdir(absPath: string, opts?: { recursive?: boolean }): Promise<void>;
   /** Delete a file. Used by the atomic writer to clean up its own temp file on a failed write
-   *  (best-effort) — it never deletes a user note. Idempotent on a missing path. */
+   *  (best-effort) and by `deleteNote` to remove a managed note after the never-clobber check
+   *  passes. Idempotent on a missing path. */
   remove(absPath: string): Promise<void>;
 }

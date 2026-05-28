@@ -75,3 +75,16 @@ export type WriteResult =
       current: Fingerprint;
       recorded?: Fingerprint;
     };
+
+/** The never-clobber delete outcome (Feature 007). `deleted` removed the file and forgot its
+ *  record; `absent` means there was nothing to delete (already gone); `conflict` left the file
+ *  untouched because it drifted or was never managed — the same guard that protects writes. */
+export type DeleteResult =
+  | { status: "deleted" }
+  | { status: "absent" }
+  | {
+      status: "conflict";
+      reason: "drifted" | "unmanaged";
+      current: Fingerprint;
+      recorded?: Fingerprint;
+    };
