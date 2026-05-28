@@ -23,7 +23,7 @@ description: "Task list for Feature 008 — Command Center Dashboard (real data)
 
 **Purpose**: Create the feature's home; confirm no new tooling needed.
 
-- [ ] T001 Create `src/features/dashboard/` (the F8 feature home, mirroring `src/features/courses/`); confirm no new runtime dependencies are needed and that `tsconfig`/`eslint` already cover `src/**`.
+- [X] T001 Create `src/features/dashboard/` (the F8 feature home, mirroring `src/features/courses/`); confirm no new runtime dependencies are needed and that `tsconfig`/`eslint` already cover `src/**`.
 
 ---
 
@@ -33,11 +33,11 @@ description: "Task list for Feature 008 — Command Center Dashboard (real data)
 
 **⚠️ CRITICAL**: No user story tile work can begin until this phase is complete.
 
-- [ ] T002 [P] Unit tests for `getDashboardSummary` — totals; milestone status breakdown + `percentDone`; empty DB (zeros, no `NaN`, empty allocation); Course with no Milestones; Domain with no Courses (still in allocation); allocation correctness + sums + ordering; a status outside the enum throws — in `src/db/repositories/dashboard.test.ts` (`// @vitest-environment node`, `node:sqlite`).
-- [ ] T003 Implement `getDashboardSummary(db)` + result types (`DashboardSummary`, `DashboardTotals`, `MilestoneProgress`, `DomainAllocation`) via ~3–4 `GROUP BY` queries parsed with ad-hoc zod schemas in `src/db/repositories/dashboard.ts`; export from `src/db/index.ts` (depends T001; satisfies T002).
-- [ ] T004 Implement the `useDashboard()` hook — `Promise.all([getDashboardSummary, listCourses])`, bucket courses into `summary.allocation` by `domain_id` → `courseGroups`, re-read on mount, read-only — in `src/features/dashboard/useDashboard.ts` (depends T003).
-- [ ] T005 Create `src/features/dashboard/DashboardRoute.tsx` scaffold: read `useDashboard()` + `useVaultState()`; render the vault banner (unset → existing "No vault connected" Callout to `/vault`; ready → a subtle "vault connected" indicator) and a loading state; wire `src/app/router.tsx` to import `DashboardRoute` from `features/dashboard`; delete the placeholder `src/app/routes/DashboardRoute.tsx` (depends T004).
-- [ ] T006 Move + rewrite the vault-banner component tests (banner shows when unset; hidden when ready) to `src/features/dashboard/DashboardRoute.test.tsx`; delete `src/app/routes/DashboardRoute.test.tsx` (depends T005).
+- [X] T002 [P] Unit tests for `getDashboardSummary` — totals; milestone status breakdown + `percentDone`; empty DB (zeros, no `NaN`, empty allocation); Course with no Milestones; Domain with no Courses (still in allocation); allocation correctness + sums + ordering; a status outside the enum throws — in `src/db/repositories/dashboard.test.ts` (`// @vitest-environment node`, `node:sqlite`).
+- [X] T003 Implement `getDashboardSummary(db)` + result types (`DashboardSummary`, `DashboardTotals`, `MilestoneProgress`, `DomainAllocation`) via ~3–4 `GROUP BY` queries parsed with ad-hoc zod schemas in `src/db/repositories/dashboard.ts`; export from `src/db/index.ts` (depends T001; satisfies T002).
+- [X] T004 Implement the `useDashboard()` hook — `Promise.all([getDashboardSummary, listCourses])`, bucket courses into `summary.allocation` by `domain_id` → `courseGroups`, re-read on mount, read-only — in `src/features/dashboard/useDashboard.ts` (depends T003).
+- [X] T005 Create `src/features/dashboard/DashboardRoute.tsx` scaffold: read `useDashboard()` + `useVaultState()`; render the vault banner (unset → existing "No vault connected" Callout to `/vault`; ready → a subtle "vault connected" indicator) and a loading state; wire `src/app/router.tsx` to import `DashboardRoute` from `features/dashboard`; delete the placeholder `src/app/routes/DashboardRoute.tsx` (depends T004).
+- [X] T006 Move + rewrite the vault-banner component tests (banner shows when unset; hidden when ready) to `src/features/dashboard/DashboardRoute.test.tsx`; delete `src/app/routes/DashboardRoute.test.tsx` (depends T005).
 
 **Checkpoint**: the Dashboard renders from real data sources (no placeholder), the vault banner behaves, and the read-model is green — ready for tiles.
 
@@ -49,9 +49,9 @@ description: "Task list for Feature 008 — Command Center Dashboard (real data)
 
 **Independent Test**: Seed domains/courses/milestones → the totals and "X/Y done (Z%)" match; a Course with no Milestones renders without `NaN%`.
 
-- [ ] T007 [P] [US1] Implement `MilestoneProgress` — a done/in-progress/todo segmented bar + "X/Y done (Z%)" label, with `total === 0` → "no milestones yet" (no `NaN%`); theme tokens (success/brand/muted) — in `src/features/dashboard/MilestoneProgress.tsx`.
-- [ ] T008 [US1] Add the totals `StatCell`s (Domains, Courses, Milestones) and `<MilestoneProgress>` (fed from `summary.milestoneProgress`) to `src/features/dashboard/DashboardRoute.tsx` (depends T005/T007).
-- [ ] T009 [US1] Component tests for real totals + progress (e.g. 12/30 done → "40%") and the zero-milestone edge (no `NaN`) in `src/features/dashboard/DashboardRoute.test.tsx` (extend) (depends T008).
+- [X] T007 [P] [US1] Implement `MilestoneProgress` — a done/in-progress/todo segmented bar + "X/Y done (Z%)" label, with `total === 0` → "no milestones yet" (no `NaN%`); theme tokens (success/brand/muted) — in `src/features/dashboard/MilestoneProgress.tsx`.
+- [X] T008 [US1] Add the totals `StatCell`s (Domains, Courses, Milestones) and `<MilestoneProgress>` (fed from `summary.milestoneProgress`) to `src/features/dashboard/DashboardRoute.tsx` (depends T005/T007).
+- [X] T009 [US1] Component tests for real totals + progress (e.g. 12/30 done → "40%") and the zero-milestone edge (no `NaN`) in `src/features/dashboard/DashboardRoute.test.tsx` (extend) (depends T008).
 
 **Checkpoint**: opening the app shows a true summary — demoable; closes the Phase 1 milestone for the dashboard.
 
@@ -63,9 +63,9 @@ description: "Task list for Feature 008 — Command Center Dashboard (real data)
 
 **Independent Test**: Courses across ≥2 Domains → each Domain's counts/color correct; a zero-course Domain still appears; clicking a Course goes to `/courses`; a Course with `moc_path` shows the MOC tag.
 
-- [ ] T010 [P] [US2] Implement `DomainAllocation` — per-Domain color dot + course/milestone counts, ordered by name, zero-course Domains still shown — in `src/features/dashboard/DomainAllocation.tsx`.
-- [ ] T011 [US2] Add `<DomainAllocation>` (from `summary.allocation`) and the Domain-grouped at-a-glance Course list (from `courseGroups`; each Course links to `/courses`; `Tag` when `moc_path` set) to `src/features/dashboard/DashboardRoute.tsx` (depends T010/T004).
-- [ ] T012 [US2] Component tests: allocation counts incl. a zero-course Domain; a Course links to `/courses`; the MOC tag shows for a Course with `moc_path` — in `src/features/dashboard/DashboardRoute.test.tsx` (extend) (depends T011).
+- [X] T010 [P] [US2] Implement `DomainAllocation` — per-Domain color dot + course/milestone counts, ordered by name, zero-course Domains still shown — in `src/features/dashboard/DomainAllocation.tsx`.
+- [X] T011 [US2] Add `<DomainAllocation>` (from `summary.allocation`) and the Domain-grouped at-a-glance Course list (from `courseGroups`; each Course links to `/courses`; `Tag` when `moc_path` set) to `src/features/dashboard/DashboardRoute.tsx` (depends T010/T004).
+- [X] T012 [US2] Component tests: allocation counts incl. a zero-course Domain; a Course links to `/courses`; the MOC tag shows for a Course with `moc_path` — in `src/features/dashboard/DashboardRoute.test.tsx` (extend) (depends T011).
 
 **Checkpoint**: the dashboard is a launchpad — orientation + navigation on top of US1.
 
@@ -77,9 +77,9 @@ description: "Task list for Feature 008 — Command Center Dashboard (real data)
 
 **Independent Test**: Empty DB → onboarding linking to `/domains`; the streak/heatmap/sessions/due-cards tiles are labeled "Phase 2" and show no real-looking number; nothing reads "learned".
 
-- [ ] T013 [P] [US3] Implement `DeferredTiles` — streak / today's protocol / activity heatmap / recent sessions / due-cards as muted shells, each with a "Phase 2" `Tag` and an em-dash where a value will go; **no populated heatmap, no zeros-as-real, nothing marked "learned"** — in `src/features/dashboard/DeferredTiles.tsx`.
-- [ ] T014 [US3] Add the onboarding empty-state (`summary.totals.domains === 0` → Callout/Panel linking to `/domains`, ahead of the zero grid) and render `<DeferredTiles>` in `src/features/dashboard/DashboardRoute.tsx` (depends T013/T008).
-- [ ] T015 [US3] Component tests: empty DB → onboarding (not a zero headline); deferred tiles present + labeled "Phase 2" with no fabricated number; assert no "learned" text — in `src/features/dashboard/DashboardRoute.test.tsx` (extend) (depends T014).
+- [X] T013 [P] [US3] Implement `DeferredTiles` — streak / today's protocol / activity heatmap / recent sessions / due-cards as muted shells, each with a "Phase 2" `Tag` and an em-dash where a value will go; **no populated heatmap, no zeros-as-real, nothing marked "learned"** — in `src/features/dashboard/DeferredTiles.tsx`.
+- [X] T014 [US3] Add the onboarding empty-state (`summary.totals.domains === 0` → Callout/Panel linking to `/domains`, ahead of the zero grid) and render `<DeferredTiles>` in `src/features/dashboard/DashboardRoute.tsx` (depends T013/T008).
+- [X] T015 [US3] Component tests: empty DB → onboarding (not a zero headline); deferred tiles present + labeled "Phase 2" with no fabricated number; assert no "learned" text — in `src/features/dashboard/DashboardRoute.test.tsx` (extend) (depends T014).
 
 **Checkpoint**: all three stories functional; the screen is welcoming and intellectually honest.
 
@@ -87,7 +87,7 @@ description: "Task list for Feature 008 — Command Center Dashboard (real data)
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T016 [P] Run the full gate — `npm run test` (Vitest), `tsc --noEmit` (strict), `npm run lint` — and fix any regressions (especially fallout from removing the placeholder `DashboardRoute` + its `Placeholder` import).
+- [X] T016 [P] Run the full gate — `npm run test` (Vitest), `tsc --noEmit` (strict), `npm run lint` — and fix any regressions (especially fallout from removing the placeholder `DashboardRoute` + its `Placeholder` import).
 - [ ] T017 Run the [quickstart.md](./quickstart.md) scenarios A–F in `npm run tauri dev` (manual runtime check — the user's surface).
 - [ ] T018 [P] After implementation: update the CLAUDE.md SPECKIT block to "implemented" and deliver the mandatory end-of-feature walkthrough (Constitution V).
 

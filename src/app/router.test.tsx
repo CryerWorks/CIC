@@ -3,9 +3,9 @@ import { screen } from "@testing-library/react";
 import { renderApp } from "./test-support";
 
 describe("routing (FR-001/FR-002/FR-004; SC-001)", () => {
-  it("renders the Dashboard placeholder at /", async () => {
+  it("renders the Dashboard at / (onboarding for an empty store)", async () => {
     renderApp({ initialEntries: ["/"] });
-    expect(await screen.findByText(/dashboard arrives in a later feature/i)).toBeTruthy();
+    expect(await screen.findByText(/welcome to cic/i)).toBeTruthy();
   });
 
   it("renders the Review placeholder", async () => {
@@ -25,7 +25,7 @@ describe("routing (FR-001/FR-002/FR-004; SC-001)", () => {
 
   it("redirects an unknown path back to the dashboard", async () => {
     renderApp({ initialEntries: ["/does-not-exist"] });
-    expect(await screen.findByText(/dashboard arrives in a later feature/i)).toBeTruthy();
+    expect(await screen.findByText(/welcome to cic/i)).toBeTruthy();
   });
 
   it("marks the active destination with aria-current", async () => {
