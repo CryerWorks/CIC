@@ -23,6 +23,13 @@ export function MilestonesEditor({ value, onChange }: Props) {
     onChange(value.map((m, idx) => (idx === i ? { ...m, ...p } : m)));
   const add = () => onChange([...value, { capability: "", status: "todo" }]);
   const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i));
+  const move = (i: number, dir: -1 | 1) => {
+    const j = i + dir;
+    if (j < 0 || j >= value.length) return;
+    const next = [...value];
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
 
   return (
     <fieldset className="flex flex-col gap-2">
@@ -51,6 +58,26 @@ export function MilestonesEditor({ value, onChange }: Props) {
               </option>
             ))}
           </select>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => move(i, -1)}
+            disabled={i === 0}
+            aria-label={`Move milestone ${i + 1} up`}
+          >
+            ↑
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => move(i, 1)}
+            disabled={i === value.length - 1}
+            aria-label={`Move milestone ${i + 1} down`}
+          >
+            ↓
+          </Button>
           <Button
             type="button"
             size="sm"

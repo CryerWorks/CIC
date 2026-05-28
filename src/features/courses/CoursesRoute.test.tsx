@@ -1,6 +1,8 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { screen, within } from "@testing-library/react";
+import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { CoursesRoute } from "./CoursesRoute";
 import {
   renderWithVault,
@@ -81,5 +83,58 @@ describe("CoursesRoute — create flow (US1 · FR-001/006/008)", () => {
 
     expect(await screen.findByText(/choose a domain/i)).toBeTruthy();
     expect(screen.queryByText("No Domain Course")).toBeNull();
+  });
+});
+
+async function seedDomainDb() {
+  return readyDb((d) => createDomain(d, { name: "Mathematics", color: "#8b6cef" }).then(() => {}));
+}
+
+async function createCourseInUI(title: string) {
+  await userEvent.click(await screen.findByRole("button", { name: "New course" }));
+  await userEvent.type(screen.getByLabelText("Title"), title);
+  const domain = screen.getByLabelText("Domain");
+  await userEvent.selectOptions(domain, within(domain).getByRole("option", { name: "Mathematics" }));
+  await userEvent.click(screen.getByRole("button", { name: "Create course" }));
+  await screen.findByText(title);
+}
+
+describe("CoursesRoute — edit & drift (US2 · FR-003/010/012)", () => {
+  it("edits a course; the new title appears in the list", async () => {
+    const db = await seedDomainDb();
+    const { connect } = realVaultConnector();
+    renderWithVault({ children: <CoursesRoute />, connect, initialize: () => Promise.resolve(db) });
+
+    await createCourseInUI("Real Analysis");
+
+    await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    const titleField = await screen.findByLabelText("Title");
+    await userEvent.clear(titleField);
+    await userEvent.type(titleField, "Real Analysis II");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText("Real Analysis II")).toBeTruthy();
+  });
+
+  it("surfaces external drift and resolves it with Reload & reapply (user edit preserved)", async () => {
+    const db = await seedDomainDb();
+    const { connect, tv } = realVaultConnector();
+    renderWithVault({ children: <CoursesRoute />, connect, initialize: () => Promise.resolve(db) });
+
+    await createCourseInUI("Real Analysis");
+
+    // Simulate an Obsidian edit to the MOC between saves.
+    const abs = join(tv.vaultPath, "Courses", "Real Analysis.md");
+    writeFileSync(abs, `${readFileSync(abs, "utf8")}\nExternal edit.\n`);
+
+    await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+    await userEvent.type(await screen.findByLabelText("Capability"), "Updated capability.");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText(/MOC changed in Obsidian/i)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: /reload & reapply/i }));
+
+    await waitFor(() => expect(screen.queryByText(/MOC changed in Obsidian/i)).toBeNull());
+    expect(readFileSync(abs, "utf8")).toContain("External edit.");
   });
 });

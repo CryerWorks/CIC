@@ -91,19 +91,19 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 
 ### Repositories
 
-- [ ] T028 [P] [US2] Add `updateMilestone(db,id,patch)` + `deleteMilestone(db,id)` to `src/db/repositories/milestones.ts`; add repo tests in `src/db/repositories/milestones.test.ts`.
+- [X] T028 [P] [US2] Add `updateMilestone(db,id,patch)` + `deleteMilestone(db,id)` to `src/db/repositories/milestones.ts`; add repo tests in `src/db/repositories/milestones.test.ts`.
 
 ### Sync (update + drift)
 
-- [ ] T029 [US2] Integration tests in `src/features/courses/sync/materialize.test.ts` (extend): update preserves Reflections (SC-002); external in-marker edit → `conflict("drifted")`; Reload & reapply → `written` with no data loss.
-- [ ] T030 [US2] Extend `materializeCourse` to return the typed `conflict` on writer drift and add the `reloadAndReapply(deps, model)` path (re-read → re-merge → `writeNote({overwrite:true})`) in `src/features/courses/sync/materialize.ts` (depends on T021; satisfies T029).
+- [X] T029 [US2] Integration tests in `src/features/courses/sync/materialize.test.ts` (extend): update preserves Reflections (SC-002); external in-marker edit → `conflict("drifted")`; Reload & reapply → `written` with no data loss.
+- [X] T030 [US2] Extend `materializeCourse` to return the typed `conflict` on writer drift and add the `reloadAndReapply(deps, model)` path (re-read → re-merge → `writeNote({overwrite:true})`) in `src/features/courses/sync/materialize.ts` (depends on T021; satisfies T029).
 
 ### UI (edit)
 
-- [ ] T031 [US2] Extend `useCourses` with edit: pre-fill capability by reading + `parseMocBody` of the course's MOC, pre-fill milestones from `listMilestonesByCourse`, persist edits, re-materialize, and expose drift state + a `resolveDrift` action in `src/features/courses/useCourses.ts` (depends on T030).
-- [ ] T032 [US2] Extend `MilestonesEditor` for edit / reorder / retire in `src/features/courses/MilestonesEditor.tsx`.
-- [ ] T033 [US2] Add the edit panel + drift notice with a "Reload & reapply" action to `src/features/courses/CoursesRoute.tsx` (depends on T031/T032).
-- [ ] T034 [US2] Component test for edit + Reflections-preservation messaging + drift UX in `src/features/courses/CoursesRoute.test.tsx` (extend) (depends on T033).
+- [X] T031 [US2] Extend `useCourses` with edit: pre-fill capability by reading + `parseMocBody` of the course's MOC, pre-fill milestones from `listMilestonesByCourse`, persist edits, re-materialize, and expose drift state + a `resolveDrift` action in `src/features/courses/useCourses.ts` (depends on T030).
+- [X] T032 [US2] Extend `MilestonesEditor` for edit / reorder / retire in `src/features/courses/MilestonesEditor.tsx`.
+- [X] T033 [US2] Add the edit panel + drift notice with a "Reload & reapply" action to `src/features/courses/CoursesRoute.tsx` (depends on T031/T032).
+- [X] T034 [US2] Component test for edit + Reflections-preservation messaging + drift UX in `src/features/courses/CoursesRoute.test.tsx` (extend) (depends on T033).
 
 **Checkpoint**: Editing round-trips safely; user-owned content is never clobbered; drift is surfaced with a non-destructive resolution.
 

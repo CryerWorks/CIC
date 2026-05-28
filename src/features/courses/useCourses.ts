@@ -8,19 +8,25 @@ import {
   listCampaignsByDomain,
   createCampaign,
   createCourse,
+  updateCourse,
   createMilestone,
+  updateMilestone,
+  deleteMilestone,
+  getCourse,
+  listMilestonesByCourse,
   type Course,
   type Domain,
   type Campaign,
   type MilestoneStatus,
 } from "../../db";
-import { materializeCourse, type MaterializeResult } from "./sync/materialize";
-import type { MocModel } from "./moc";
+import { materializeCourse, reapplyCourse, type MaterializeResult } from "./sync/materialize";
+import { parseMocBody, MocParseError, type MocModel } from "./moc";
 
 /**
- * Courses screen state. Loads Domains + Courses, and drives the create flow: persist the Course
- * + Milestones (+ optional inline Campaign) to SQLite, then materialize the MOC into the vault.
- * Used only inside a vault-`ready` subtree (it calls `useVault()`), so the screen gates first.
+ * Courses screen state. Drives create + edit: persist the Course / Milestones / Campaign to
+ * SQLite, then materialize the MOC into the vault. On a never-clobber drift conflict it stashes
+ * the attempted model so the UI can offer "Reload & reapply" (`resolveDrift`). Used only inside a
+ * vault-`ready` subtree (it calls `useVault()`).
  */
 
 export type CampaignChoice =
@@ -29,6 +35,8 @@ export type CampaignChoice =
   | { kind: "new"; title: string };
 
 export interface MilestoneInput {
+  /** Present → an existing milestone (update); absent → a new one (insert). */
+  id?: string;
   capability: string;
   status: MilestoneStatus;
 }
@@ -41,7 +49,16 @@ export interface CourseInput {
   milestones: MilestoneInput[];
 }
 
-export type CreateResult =
+/** Pre-fill shape for the edit form (capability is read back from the MOC). */
+export interface CourseEditData {
+  title: string;
+  domainId: string;
+  campaign: CampaignChoice;
+  capability: string;
+  milestones: MilestoneInput[];
+}
+
+export type SaveResult =
   | { ok: true; materialize: MaterializeResult }
   | { ok: false; error: string };
 
@@ -64,6 +81,7 @@ export function useCourses() {
   const [domains, setDomains] = useState<Domain[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingReapply, setPendingReapply] = useState<MocModel | null>(null);
 
   const refresh = useCallback(async () => {
     const [d, c] = await Promise.all([listDomains(db), listCourses(db)]);
@@ -90,73 +108,177 @@ export function useCourses() {
     [db],
   );
 
+  const resolveCampaign = useCallback(
+    async (domainId: string, choice: CampaignChoice): Promise<{ id: string | null; title: string | null }> => {
+      if (choice.kind === "existing") {
+        const list = await listCampaignsByDomain(db, domainId);
+        return { id: choice.id, title: list.find((c) => c.id === choice.id)?.title ?? null };
+      }
+      if (choice.kind === "new" && choice.title.trim()) {
+        const created = await createCampaign(db, { title: choice.title.trim(), domainId });
+        return { id: created.id, title: created.title };
+      }
+      return { id: null, title: null };
+    },
+    [db],
+  );
+
+  /** Materialize, stash the model on drift, refresh. */
+  const finish = useCallback(
+    async (model: MocModel): Promise<MaterializeResult> => {
+      const result = await materializeCourse({ vault, db }, model);
+      setPendingReapply(result.status === "conflict" ? model : null);
+      await refresh();
+      return result;
+    },
+    [vault, db, refresh],
+  );
+
   const create = useCallback(
-    async (input: CourseInput): Promise<CreateResult> => {
+    async (input: CourseInput): Promise<SaveResult> => {
       const parsed = titleSchema.safeParse(input.title);
       if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
       if (!input.domainId) return { ok: false, error: "Choose a domain" };
-
       try {
-        let campaignId: string | null = null;
-        let campaignTitle: string | null = null;
-        if (input.campaign.kind === "existing") {
-          campaignId = input.campaign.id;
-          const list = await listCampaignsByDomain(db, input.domainId);
-          campaignTitle = list.find((c) => c.id === campaignId)?.title ?? null;
-        } else if (input.campaign.kind === "new" && input.campaign.title.trim()) {
-          const created = await createCampaign(db, {
-            title: input.campaign.title.trim(),
-            domainId: input.domainId,
-          });
-          campaignId = created.id;
-          campaignTitle = created.title;
-        }
-
+        const campaign = await resolveCampaign(input.domainId, input.campaign);
         const course = await createCourse(db, {
           title: parsed.data,
           domainId: input.domainId,
-          campaignId,
+          campaignId: campaign.id,
         });
-
-        const milestones: MocModel["milestones"] = [];
-        let order = 0;
-        for (const m of input.milestones) {
-          const capability = m.capability.trim();
-          if (!capability) continue;
-          const saved = await createMilestone(db, {
-            courseId: course.id,
-            capability,
-            orderIndex: order,
-            status: m.status,
-          });
-          milestones.push({ id: saved.id, capability: saved.capability, status: saved.status });
-          order += 1;
-        }
-
+        const milestones = await insertMilestones(course.id, input.milestones);
         const domainName = domains.find((d) => d.id === input.domainId)?.name ?? "";
         const model: MocModel = {
           id: course.id,
           title: parsed.data,
           domain: domainName,
-          campaign: campaignTitle,
+          campaign: campaign.title,
           capability: input.capability.trim(),
           milestones,
         };
-
-        const materialize = await materializeCourse({ vault, db }, model);
-        await refresh();
-        return { ok: true, materialize };
+        return { ok: true, materialize: await finish(model) };
       } catch (e) {
         return { ok: false, error: msgOf(e, "Failed to create the course") };
       }
     },
-    [db, vault, domains, refresh],
+    [db, domains, resolveCampaign, finish],
   );
+
+  // Insert milestones (create path) in order; returns the model milestone list with real ids.
+  const insertMilestones = useCallback(
+    async (courseId: string, inputs: MilestoneInput[]): Promise<MocModel["milestones"]> => {
+      const out: MocModel["milestones"] = [];
+      let order = 0;
+      for (const m of inputs) {
+        const capability = m.capability.trim();
+        if (!capability) continue;
+        const saved = await createMilestone(db, { courseId, capability, orderIndex: order, status: m.status });
+        out.push({ id: saved.id, capability: saved.capability, status: saved.status });
+        order += 1;
+      }
+      return out;
+    },
+    [db],
+  );
+
+  const loadCourseForEdit = useCallback(
+    async (courseId: string): Promise<CourseEditData | null> => {
+      const course = await getCourse(db, courseId);
+      if (!course) return null;
+      const ms = await listMilestonesByCourse(db, courseId);
+
+      let capability = "";
+      if (course.moc_path) {
+        try {
+          const note = await vault.reader.readNote(course.moc_path);
+          const parsed = parseMocBody(note.body);
+          if (!(parsed instanceof MocParseError)) capability = parsed.capability;
+        } catch {
+          // MOC missing/unreadable → start from an empty capability
+        }
+      }
+
+      return {
+        title: course.title,
+        domainId: course.domain_id,
+        campaign: course.campaign_id ? { kind: "existing", id: course.campaign_id } : { kind: "none" },
+        capability,
+        milestones: ms.map((m) => ({ id: m.id, capability: m.capability, status: m.status })),
+      };
+    },
+    [db, vault],
+  );
+
+  const edit = useCallback(
+    async (courseId: string, input: CourseInput): Promise<SaveResult> => {
+      const parsed = titleSchema.safeParse(input.title);
+      if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+      try {
+        const existing = await getCourse(db, courseId);
+        if (!existing) return { ok: false, error: "Course not found" };
+
+        const campaign = await resolveCampaign(existing.domain_id, input.campaign);
+        await updateCourse(db, courseId, { title: parsed.data, campaignId: campaign.id });
+
+        // Reconcile milestones: keep ids still present (non-empty), delete the rest, in order.
+        const keptIds = new Set(
+          input.milestones.filter((m) => m.id && m.capability.trim()).map((m) => m.id as string),
+        );
+        for (const c of await listMilestonesByCourse(db, courseId)) {
+          if (!keptIds.has(c.id)) await deleteMilestone(db, c.id);
+        }
+        const milestones: MocModel["milestones"] = [];
+        let order = 0;
+        for (const m of input.milestones) {
+          const capability = m.capability.trim();
+          if (!capability) continue;
+          const saved = m.id
+            ? await updateMilestone(db, m.id, { capability, status: m.status, orderIndex: order })
+            : await createMilestone(db, { courseId, capability, orderIndex: order, status: m.status });
+          milestones.push({ id: saved.id, capability: saved.capability, status: saved.status });
+          order += 1;
+        }
+
+        const domainName = domains.find((d) => d.id === existing.domain_id)?.name ?? "";
+        const model: MocModel = {
+          id: courseId,
+          title: parsed.data,
+          domain: domainName,
+          campaign: campaign.title,
+          capability: input.capability.trim(),
+          milestones,
+        };
+        return { ok: true, materialize: await finish(model) };
+      } catch (e) {
+        return { ok: false, error: msgOf(e, "Failed to update the course") };
+      }
+    },
+    [db, domains, resolveCampaign, finish],
+  );
+
+  const resolveDrift = useCallback(async (): Promise<MaterializeResult | null> => {
+    if (!pendingReapply) return null;
+    const result = await reapplyCourse({ vault, db }, pendingReapply);
+    setPendingReapply(null);
+    await refresh();
+    return result;
+  }, [pendingReapply, vault, db, refresh]);
 
   const groups: DomainGroup[] = domains.map((domain) => ({
     domain,
     courses: courses.filter((c) => c.domain_id === domain.id),
   }));
 
-  return { loading, domains, courses, groups, campaignsFor, create, refresh };
+  return {
+    loading,
+    domains,
+    courses,
+    groups,
+    campaignsFor,
+    create,
+    edit,
+    loadCourseForEdit,
+    resolveDrift,
+    hasPendingReapply: pendingReapply !== null,
+  };
 }

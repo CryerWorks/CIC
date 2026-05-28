@@ -2,31 +2,40 @@ import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Button } from "../../components/ui";
 import type { Domain, Campaign } from "../../db";
 import { MilestonesEditor } from "./MilestonesEditor";
-import type { CourseInput, MilestoneInput, CampaignChoice } from "./useCourses";
+import type { CourseInput, CourseEditData, MilestoneInput, CampaignChoice } from "./useCourses";
 
 interface Props {
   domains: Domain[];
   campaignsFor: (domainId: string) => Promise<Campaign[]>;
   onSubmit: (input: CourseInput) => Promise<{ ok: true } | { ok: false; error: string }>;
   onCancel: () => void;
+  /** Present → edit mode (domain fixed, fields pre-filled). */
+  initial?: CourseEditData;
 }
 
 const fieldCx =
-  "rounded-sm border border-line-bright bg-surface-sunken px-3 py-2 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand";
+  "rounded-sm border border-line-bright bg-surface-sunken px-3 py-2 text-sm text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60";
 
 type CampaignMode = "none" | "existing" | "new";
 
-/** Create a Course: title, required Domain, optional Campaign (existing or inline-new),
- *  Capability paragraph, and Milestones. */
-export function CourseForm({ domains, campaignsFor, onSubmit, onCancel }: Props) {
-  const [title, setTitle] = useState("");
-  const [domainId, setDomainId] = useState("");
+function initialMode(c: CampaignChoice | undefined): CampaignMode {
+  return c?.kind === "existing" ? "existing" : "none";
+}
+
+/** Create or edit a Course. In edit mode the Domain is fixed (FR-003 doesn't move a Course
+ *  between Domains); title / campaign / capability / milestones are editable. */
+export function CourseForm({ domains, campaignsFor, onSubmit, onCancel, initial }: Props) {
+  const isEdit = initial !== undefined;
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [domainId, setDomainId] = useState(initial?.domainId ?? "");
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
-  const [campaignMode, setCampaignMode] = useState<CampaignMode>("none");
-  const [campaignId, setCampaignId] = useState("");
+  const [campaignMode, setCampaignMode] = useState<CampaignMode>(initialMode(initial?.campaign));
+  const [campaignId, setCampaignId] = useState(
+    initial?.campaign.kind === "existing" ? initial.campaign.id : "",
+  );
   const [newCampaign, setNewCampaign] = useState("");
-  const [capability, setCapability] = useState("");
-  const [milestones, setMilestones] = useState<MilestoneInput[]>([]);
+  const [capability, setCapability] = useState(initial?.capability ?? "");
+  const [milestones, setMilestones] = useState<MilestoneInput[]>(initial?.milestones ?? []);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -35,21 +44,23 @@ export function CourseForm({ domains, campaignsFor, onSubmit, onCancel }: Props)
   const capFieldId = useId();
   const errorId = useId();
   const titleRef = useRef<HTMLInputElement>(null);
+  const firstRun = useRef(true);
 
   useEffect(() => {
     titleRef.current?.focus();
   }, []);
 
-  // Load campaigns for the chosen domain; reset the campaign choice when the domain changes.
+  // Load campaigns for the current domain. Reset the campaign choice only on a user-initiated
+  // domain change (not on mount), so an edit form keeps its pre-filled campaign.
   useEffect(() => {
-    setCampaignMode("none");
-    setCampaignId("");
-    if (!domainId) {
-      setCampaigns([]);
-      return;
-    }
     let active = true;
-    campaignsFor(domainId).then((cs) => active && setCampaigns(cs));
+    if (domainId) campaignsFor(domainId).then((cs) => active && setCampaigns(cs));
+    else setCampaigns([]);
+    if (!firstRun.current) {
+      setCampaignMode("none");
+      setCampaignId("");
+    }
+    firstRun.current = false;
     return () => {
       active = false;
     };
@@ -103,6 +114,7 @@ export function CourseForm({ domains, campaignsFor, onSubmit, onCancel }: Props)
           id={domainFieldId}
           value={domainId}
           onChange={(e) => setDomainId(e.target.value)}
+          disabled={isEdit}
           className={fieldCx}
         >
           <option value="">Select a domain…</option>
@@ -197,7 +209,7 @@ export function CourseForm({ domains, campaignsFor, onSubmit, onCancel }: Props)
 
       <div className="flex gap-2">
         <Button type="submit" disabled={busy}>
-          Create course
+          {isEdit ? "Save changes" : "Create course"}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel

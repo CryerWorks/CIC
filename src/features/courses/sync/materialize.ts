@@ -35,9 +35,10 @@ async function resolvePath(db: SqlExecutor, model: MocModel, existingPath: strin
   return mocRelPathFor(model.title, taken);
 }
 
-export async function materializeCourse(
+async function writeModel(
   deps: CourseSyncDeps,
   model: MocModel,
+  overwrite: boolean,
 ): Promise<MaterializeResult> {
   const { vault, db } = deps;
 
@@ -48,10 +49,11 @@ export async function materializeCourse(
     ? mergeMocBody((await vault.reader.readNote(path)).body, model)
     : renderMocBody(model);
 
-  const result = await vault.writer.writeNote(path, {
-    frontmatter: buildFrontmatter(model),
-    body,
-  });
+  const result = await vault.writer.writeNote(
+    path,
+    { frontmatter: buildFrontmatter(model), body },
+    { overwrite },
+  );
 
   if (result.status === "conflict") {
     return { status: "conflict", mocPath: path, reason: result.reason };
@@ -61,4 +63,17 @@ export async function materializeCourse(
     await updateCourse(db, model.id, { mocPath: path });
   }
   return { status: "written", mocPath: path };
+}
+
+/** Create or update a Course's MOC, honoring never-clobber — returns a typed conflict on drift
+ *  rather than overwriting. */
+export function materializeCourse(deps: CourseSyncDeps, model: MocModel): Promise<MaterializeResult> {
+  return writeModel(deps, model, false);
+}
+
+/** Resolve a drift conflict (R5): re-read the now-current file, re-merge the app-managed
+ *  sections into it, and write — incorporating the user's external edits, then re-stamping only
+ *  the managed regions. The single sanctioned use of the writer's `overwrite` escape hatch. */
+export function reapplyCourse(deps: CourseSyncDeps, model: MocModel): Promise<MaterializeResult> {
+  return writeModel(deps, model, true);
 }

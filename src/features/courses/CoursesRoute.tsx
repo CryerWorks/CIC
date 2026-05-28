@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Panel, Button, Callout, Tag } from "../../components/ui";
 import { useVaultState } from "../../app/providers/VaultProvider";
-import { useCourses, type CourseInput } from "./useCourses";
+import { useCourses, type CourseInput, type CourseEditData } from "./useCourses";
 import { CourseForm } from "./CourseForm";
 
 /** The Courses screen. Gates on a connected vault (Courses materialize into the vault), then
@@ -31,38 +31,65 @@ export function CoursesRoute() {
   return <CoursesManager />;
 }
 
-function CoursesManager() {
-  const { loading, domains, groups, campaignsFor, create } = useCourses();
-  const [creating, setCreating] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+type Editor = { mode: "new" } | { mode: "edit"; courseId: string; data: CourseEditData };
 
-  const handleCreate = async (input: CourseInput) => {
-    const result = await create(input);
+function CoursesManager() {
+  const {
+    loading,
+    domains,
+    groups,
+    campaignsFor,
+    create,
+    edit,
+    loadCourseForEdit,
+    resolveDrift,
+    hasPendingReapply,
+  } = useCourses();
+  const [editor, setEditor] = useState<Editor | null>(null);
+
+  const handleSave = async (input: CourseInput) => {
+    const result = editor?.mode === "edit" ? await edit(editor.courseId, input) : await create(input);
     if (!result.ok) return { ok: false as const, error: result.error };
-    setCreating(false);
-    setNotice(
-      result.materialize.status === "conflict"
-        ? `Saved, but the MOC file at ${result.materialize.mocPath} couldn't be written (${result.materialize.reason}). A file may already exist there — resolve it in your vault.`
-        : null,
-    );
+    setEditor(null); // a drift conflict (if any) is surfaced by the callout below
     return { ok: true as const };
   };
 
+  const openEdit = async (courseId: string) => {
+    const data = await loadCourseForEdit(courseId);
+    if (data) setEditor({ mode: "edit", courseId, data });
+  };
+
   const totalCourses = groups.reduce((n, g) => n + g.courses.length, 0);
-  const showEmpty = !loading && totalCourses === 0 && !creating;
+  const showEmpty = !loading && totalCourses === 0 && editor === null;
 
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-text">Courses</h1>
-        {!creating && domains.length > 0 && (
-          <Button onClick={() => setCreating(true)}>New course</Button>
+        {editor === null && domains.length > 0 && (
+          <Button onClick={() => setEditor({ mode: "new" })}>New course</Button>
         )}
       </div>
 
-      {notice && (
-        <Callout variant="warn" title="MOC not written" className="mb-4">
-          {notice}
+      {hasPendingReapply && (
+        <Callout variant="warn" title="MOC changed in Obsidian" className="mb-4">
+          <div className="flex flex-col gap-2">
+            <span>
+              The course was saved, but its MOC was edited outside the app since the last save — so
+              it wasn&apos;t overwritten. Reload &amp; reapply re-reads the file and re-applies the
+              app-managed sections without touching your own edits.
+            </span>
+            <div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  void resolveDrift();
+                }}
+              >
+                Reload &amp; reapply
+              </Button>
+            </div>
+          </div>
         </Callout>
       )}
 
@@ -78,13 +105,14 @@ function CoursesManager() {
         </Callout>
       ) : (
         <>
-          {creating && (
-            <Panel title="New course" className="mb-4">
+          {editor && (
+            <Panel title={editor.mode === "edit" ? "Edit course" : "New course"} className="mb-4">
               <CourseForm
                 domains={domains}
                 campaignsFor={campaignsFor}
-                onSubmit={handleCreate}
-                onCancel={() => setCreating(false)}
+                initial={editor.mode === "edit" ? editor.data : undefined}
+                onSubmit={handleSave}
+                onCancel={() => setEditor(null)}
               />
             </Panel>
           )}
@@ -99,7 +127,7 @@ function CoursesManager() {
                   Create a Course and it appears as a MOC in your vault.
                 </p>
                 <div className="mt-4 flex justify-center">
-                  <Button onClick={() => setCreating(true)}>Create your first course</Button>
+                  <Button onClick={() => setEditor({ mode: "new" })}>Create your first course</Button>
                 </div>
               </div>
             </Panel>
@@ -123,7 +151,12 @@ function CoursesManager() {
                           <Panel>
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-text">{c.title}</span>
-                              {c.moc_path && <Tag tone="neutral">MOC</Tag>}
+                              <div className="flex items-center gap-2">
+                                {c.moc_path && <Tag tone="neutral">MOC</Tag>}
+                                <Button size="sm" variant="secondary" onClick={() => void openEdit(c.id)}>
+                                  Edit
+                                </Button>
+                              </div>
                             </div>
                           </Panel>
                         </li>
