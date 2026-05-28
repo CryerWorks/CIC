@@ -1,5 +1,5 @@
 # PRD — Combat Information Center (CIC) Learning Platform
-### Initial Specification for Claude Code · v0.9
+### Initial Specification for Claude Code · v0.9.1
 
 > **Codename:** CIC (working title — built on the `war-room-2026` foundation). Rename freely.
 > **Purpose of this document:** a build-ready spec to hand to Claude Code. It defines the vision, the architecture decision that everything hinges on, the data model, the feature set, and a phased migration plan from the existing `war-room-2026` repo.
@@ -17,6 +17,8 @@
 > **Locked in v0.7:** Cog-psych additions closing three more gaps in §15 — **F2 pretest step** (errorful generation before active study; Daily Loop becomes 8-step), **F3.5 calibration** (confidence ratings on reviews surfacing overconfidence — the illusion of competence the PRD already cites), and **variability of surface form** as a design requirement on F5/F6/F10 (Schmidt & Bjork: variability complements interleaving). Vault contract tightened: **F1 MOC body template locked** with app-managed sections (no Dataview dependency), **F7 backlinks consumption** added (read, not just write), **block-ref citations** in cards (jump-to-paragraph on review), **vault subfolder support** (§6 — CIC can live under `Learning/` in a larger vault), and a concrete **conflict resolution UX** in §13 (detect via mtime+hash, 3-way diff dialog, no-clobber while open).
 >
 > **Locked in v0.8:** Closing the **Resource ↔ Session ↔ Card** chain. **Resources** become a first-class entity (books, PDFs, EPUBs, Markdown, video files, video URLs, web pages, audio) with kinds, locators, and optional AI-ingestion. Sessions get explicit **assignments** (`session_assignments`) — "read pp.10-15", "watch 00:15-00:23", "review Chapter 3" — that drive F2's active-study step. **Cards cite Resources directly** (M:N `card_resources` with locators), in addition to the v0.7 block-ref-to-Note citation. Naming pass: the old "Source" / "Source Note" domain term is renamed to **Resource** / **Resource Note** for consistency (Source was overloaded — meant both the document and the user's commentary; English-idiom uses of "source" stay). Blueprint IR's `source` field → `input` to disambiguate from the Resource concept.
+>
+> **Clarified in v0.9.1:** The **F1 MOC body template** now wraps `## Capability` in `<!-- cic:capability -->` markers, matching every other app-managed section. This is a clarification (not a new lock) of the v0.7 template: Capability was always app-managed, and uniform marker delimitation lets the `VaultWriter` round-trip it safely (replace only the text between markers) without a second, heading-scoped parsing mode. Surfaced during Feature 007 planning (`specs/007-course-moc/research.md` R2) and reconciled here per Constitution V (update the PRD before implementation).
 >
 > **Locked in v0.9:** Visual design **decoupled from war-room's tactical-HUD aesthetic**. CIC's frontend follows the **Obsidian theme** — soft charcoal surfaces + purple primary (matches Obsidian wikilinks) + Inter typography + soft 8px radius + flat-and-calm — per the new canonical artifact [CIC-Design-Language-Obsidian.html](CIC-Design-Language-Obsidian.html) at the project root. The **IA, screen layouts, and component vocabulary still derive from war-room** (panels, stat cells, heatmap, stepper, checklist, dependency graph); **only the visual skin changed** (no hex grid, no corner brackets, no scanlines, no boot sequence — those clash with the user's Obsidian vault). **Critical color rule (never reverse):** purple = brand / links / active states; cyan (`#00bfbc`) = AI-generated output ONLY.
 
@@ -229,12 +231,10 @@ Create user-defined courses with capability milestones, resources, and dependenc
 
 **Resource registration (v0.8).** Adding a Resource to a Course is a first-class action — not a free-form string in MOC frontmatter. The authoring UI offers a kind picker (`pdf` / `epub` / `markdown` / `video_file` / `video_url` / `web_page` / `book` / `audio`) and kind-appropriate fields: file picker for local files, URL field for web, manual title/author entry for books with no file. The Resource is stored in `resources` (SQLite); the M:N link to the Course is stored in `course_resources` with a `role` of `primary` / `secondary` / `reference`. **Resources are reusable across Courses** — one textbook can be the primary Resource of two related Courses without duplication. The MOC body's `## Resources` section is rendered from these rows (between the `<!-- cic:resources -->` markers per the v0.7 template).
 
-**MOC body template (locked v0.7).** Every Course MOC has a fixed body structure so dashboards, scheduler, and AI features can rely on it:
+**MOC body template (locked v0.7; capability markers clarified v0.9.1).** Every Course MOC has a fixed body structure so dashboards, scheduler, and AI features can rely on it:
 
 ```markdown
-## Capability
-<one paragraph — what does completing this Course prove the user can do?>
-
+## Capability        <!-- cic:capability --> ... <!-- /cic:capability -->   (one paragraph — what completing this Course proves)
 ## Milestones        <!-- cic:milestones --> ... <!-- /cic:milestones -->
 ## Resources         <!-- cic:resources --> ... <!-- /cic:resources -->
 ## Active Projects   <!-- cic:projects --> ... <!-- /cic:projects -->
@@ -243,7 +243,7 @@ Create user-defined courses with capability milestones, resources, and dependenc
 ## Reflections       <!-- user-only — app never writes here -->
 ```
 
-The HTML comment markers (`<!-- cic:milestones -->`) delimit **app-managed sections** that the app re-renders on every sync. Content *outside* the markers — including the entire `## Reflections` section — is user-owned and never overwritten. This contract means the app never needs Dataview to render dynamic lists; plain Obsidian shows a working MOC out of the box (see F7).
+The HTML comment markers (`<!-- cic:capability -->`, `<!-- cic:milestones -->`, …) delimit **app-managed sections** that the app re-renders on every sync. Capability is marker-delimited like every other app-managed section (clarified v0.9.1) so the writer can round-trip it safely — replacing only the text *between* its markers — making the merge/parse contract uniform across all sections. Content *outside* the markers — including the entire `## Reflections` section — is user-owned and never overwritten. This contract means the app never needs Dataview to render dynamic lists; plain Obsidian shows a working MOC out of the box (see F7).
 
 ### F2 — The Daily Loop (guided session flow)
 A first-class, step-guided session implementing the 8-step protocol (v0.7):

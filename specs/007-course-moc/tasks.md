@@ -72,12 +72,12 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 
 ### UI (Courses screen)
 
-- [ ] T022 [P] [US1] Implement the `useCourses` hook (list grouped by Domain; create Course + Milestones; assemble `MocModel` + call `materializeCourse`; optimistic pattern mirroring `useDomains`) in `src/features/courses/useCourses.ts`.
-- [ ] T023 [P] [US1] Implement `CourseForm` (title, Domain select, optional Campaign select, Capability textarea) in `src/features/courses/CourseForm.tsx`.
+- [ ] T022 [P] [US1] Implement the `useCourses` hook (list grouped by Domain; create Course + Milestones; create a Campaign inline via `createCampaign` when the form supplies a new name; assemble `MocModel` + call `materializeCourse`; optimistic pattern mirroring `useDomains`) in `src/features/courses/useCourses.ts`.
+- [ ] T023 [P] [US1] Implement `CourseForm` (title; **required** Domain select; optional Campaign — pick an existing one *or* create a new Campaign inline by name; Capability textarea) in `src/features/courses/CourseForm.tsx`. The form MUST block submit without a Domain (FR-005).
 - [ ] T024 [P] [US1] Implement `MilestonesEditor` (add ordered milestones with capability + status) in `src/features/courses/MilestonesEditor.tsx`.
-- [ ] T025 [US1] Implement `CoursesRoute` (vault-gated via `useVaultState()`: guidance→`/vault` when not ready; empty state; list grouped by Domain; new-course flow) in `src/features/courses/CoursesRoute.tsx` (depends on T022/T023/T024).
+- [ ] T025 [US1] Implement `CoursesRoute` (vault-gated via `useVaultState()`: guidance→`/vault` when not ready; empty state; when no Domain exists, guide to create one first per US1-AS3; list grouped by Domain; new-course flow) in `src/features/courses/CoursesRoute.tsx` (depends on T022/T023/T024).
 - [ ] T026 [US1] Wire the route: import `CoursesRoute` from `src/features/courses/` in `src/app/router.tsx`, set Courses `implemented: true` in `src/app/navigation.ts`, and delete the placeholder `src/app/routes/CoursesRoute.tsx` (depends on T025).
-- [ ] T027 [US1] Component test for the create flow + vault-gating (unset vault → guidance link to `/vault`; ready vault → create → course appears) in `src/features/courses/CoursesRoute.test.tsx` (depends on T025/T026).
+- [ ] T027 [US1] Component test for the create flow + vault-gating (unset vault → guidance link to `/vault`; ready vault → create → course appears; submit blocked without a Domain) in `src/features/courses/CoursesRoute.test.tsx` (depends on T025/T026).
 
 **Checkpoint**: A Course created in-app materializes as a clean MOC in the vault. MVP complete.
 
@@ -121,7 +121,7 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 
 ### Sync (rescan)
 
-- [ ] T036 [US3] Integration tests for `rescanCourses` (round-trip SC-003; import SC-006 + auto-create Domain; ignore non-CIC; malformed → skip-with-notice FR-019; idempotent; never calls `fs.remove` on a vault file) in `src/features/courses/sync/rescan.test.ts`.
+- [ ] T036 [US3] Integration tests for `rescanCourses` (round-trip SC-003; import SC-006 + auto-create Domain; **moved/renamed file** — same `cic-id`, changed path → re-matches the existing Course and updates `moc_path`, FR-016; ignore non-CIC; malformed → skip-with-notice FR-019; idempotent; never calls `fs.remove` on a vault file) in `src/features/courses/sync/rescan.test.ts`.
 - [ ] T037 [US3] Implement `rescanCourses(deps)` in `src/features/courses/sync/rescan.ts`: `reader.list` → `readNoteAs(MocCourseFrontmatterSchema)` discriminate/skip → `parseMocBody` → resolve domain/campaign → `upsertCourseRow` → `syncCourseMilestones` (mint ids for comment-less lines) → `RescanReport` (depends on T016/T035; satisfies T036).
 
 ### UI (rescan action + boot trigger)
@@ -138,7 +138,7 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 - [ ] T040 [P] Add a `src/features/courses/index.ts` barrel if any cross-module import needs it; verify the ESLint vendor-import rule is unaffected by the new feature.
 - [ ] T041 Run the full gate — `npm run test` (Vitest), `tsc --noEmit` (strict), `npm run lint` — and fix any regressions (especially fallout from removing the placeholder `CoursesRoute`).
 - [ ] T042 Run the [quickstart.md](./quickstart.md) scenarios A–F in `npm run tauri dev` (manual runtime check — the live `VaultWriter` + Obsidian round-trip; the user's surface).
-- [ ] T043 [P] After implementation: update the CLAUDE.md SPECKIT block to "implemented", and flag the R2 capability-markers refinement to the user as a proposed PRD §F1 template clarification (apply to the PRD if approved).
+- [ ] T043 [P] After implementation: update the CLAUDE.md SPECKIT block to "implemented". (The R2 capability-markers refinement was already reconciled into the PRD §F1 template as **v0.9.1** during `/speckit-analyze` — no further PRD action needed.)
 
 ---
 

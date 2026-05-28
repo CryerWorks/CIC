@@ -56,7 +56,7 @@ The canonical app-managed section order is: `capability, milestones, resources, 
 
 **Rationale**: The locked v0.7 template (PRD §F1) shows `## Capability` as a bare paragraph, but the same section states "app-managed sections in MOCs are delimited by `<!-- cic:* -->` markers." Capability is app-managed (it round-trips with the Course record), so wrapping it in markers makes the merge/parse logic **uniform** — every replaceable region is "the text between an open and close marker." This is the safest never-clobber design: we only ever rewrite strictly *inside* a marker pair, so user prose anywhere else (even between sections) is byte-preserved. HTML comments are invisible in Obsidian's reading view, so the MOC stays clean for humans.
 
-**Action**: This is a small, spirit-compliant clarification of the locked template. Flag to the user and propose adding capability markers to the PRD §F1 template snippet (SOP: design decisions extend the PRD, not code comments).
+**Action**: ✅ Reconciled during `/speckit-analyze` (finding C1) — the PRD §F1 template now wraps `## Capability` in `<!-- cic:capability -->` markers, recorded as **PRD v0.9.1** (per Constitution V: update the PRD before implementation).
 
 **Alternatives considered**: Heading-delimited Capability (replace text between `## Capability` and the next `##`) — rejected: a second parsing mode (heading-scoped vs marker-scoped) doubles the merge/parse surface and is more fragile if the user reorders or renames headings. Treating the whole span from the first managed heading to the Notes block as one regenerated region — rejected: would clobber any user prose a person added between marker blocks.
 
