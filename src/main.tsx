@@ -1,3 +1,4 @@
+import "./polyfills";
 import "./styles/fonts";
 import "./styles/theme.css";
 import React from "react";
