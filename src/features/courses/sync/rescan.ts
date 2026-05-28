@@ -32,7 +32,11 @@ export interface RescanReport {
   skipped: number;
 }
 
-async function reconcileFile(deps: CourseSyncDeps, path: string): Promise<RescanFileResult | null> {
+async function reconcileFile(
+  deps: CourseSyncDeps,
+  path: string,
+  vaultId: string,
+): Promise<RescanFileResult | null> {
   const { vault, db } = deps;
 
   const read = await vault.reader.readNoteAs(path, MocCourseFrontmatterSchema);
@@ -46,7 +50,7 @@ async function reconcileFile(deps: CourseSyncDeps, path: string): Promise<Rescan
   const front = read.note.frontmatter;
   const courseId = front["cic-id"];
 
-  const domain = await findOrCreateDomainByName(db, front.domain);
+  const domain = await findOrCreateDomainByName(db, vaultId, front.domain);
   const campaign = front.campaign
     ? await findOrCreateCampaignByTitle(db, domain.id, front.campaign)
     : null;
@@ -70,10 +74,10 @@ async function reconcileFile(deps: CourseSyncDeps, path: string): Promise<Rescan
   return { path, outcome: existing ? "updated" : "imported" };
 }
 
-export async function rescanCourses(deps: CourseSyncDeps): Promise<RescanReport> {
+export async function rescanCourses(deps: CourseSyncDeps, vaultId: string): Promise<RescanReport> {
   const results: RescanFileResult[] = [];
   for (const path of await deps.vault.reader.list()) {
-    const result = await reconcileFile(deps, path);
+    const result = await reconcileFile(deps, path, vaultId);
     if (result) results.push(result);
   }
   return {

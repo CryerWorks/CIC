@@ -2,6 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { NodeSqlExecutor } from "../adapters/node";
 import { migrate } from "../migrate";
+import { attachVault } from "./vaults";
 import { createDomain } from "./domains";
 import { createCourse } from "./courses";
 import {
@@ -14,7 +15,8 @@ import {
 async function courseDb() {
   const db = NodeSqlExecutor.open();
   await migrate(db);
-  const domain = await createDomain(db, { name: "Math", color: "#8b6cef" });
+  await attachVault(db, { id: "vault-1", path: "/vault" });
+  const domain = await createDomain(db, "vault-1", { name: "Math", color: "#8b6cef" });
   const course = await createCourse(db, { title: "RA", domainId: domain.id });
   return { db, course };
 }

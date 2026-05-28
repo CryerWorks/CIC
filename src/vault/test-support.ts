@@ -11,6 +11,7 @@ import { join } from "node:path";
 import { NodeVaultFs } from "./adapters/node";
 import { VaultReader } from "./reader";
 import { VaultWriter } from "./writer";
+import { createVaultIdentity, type VaultIdentity } from "./identity";
 import type { VaultWriteLog } from "./writeLog";
 import type { Fingerprint } from "./errors";
 
@@ -37,6 +38,7 @@ export interface TempVault {
   log: InMemoryWriteLog;
   reader: VaultReader;
   writer: VaultWriter;
+  identity: VaultIdentity;
   cleanup(): void;
 }
 
@@ -51,6 +53,7 @@ export function makeTempVault(): TempVault {
     log,
     reader: new VaultReader(fs, vaultPath, log),
     writer: new VaultWriter(fs, vaultPath, log),
+    identity: createVaultIdentity(fs, vaultPath),
     cleanup: () => rmSync(vaultPath, { recursive: true, force: true }),
   };
 }

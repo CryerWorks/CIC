@@ -2,15 +2,19 @@
 import { describe, it, expect } from "vitest";
 import { NodeSqlExecutor } from "../adapters/node";
 import { migrate } from "../migrate";
+import { attachVault } from "./vaults";
 import { createDomain } from "./domains";
 import { createCourse } from "./courses";
 import { createMilestone } from "./milestones";
 import { getDashboardSummary } from "./dashboard";
 import type { MilestoneStatus } from "../models/enums";
 
+const VID = "vault-1";
+
 async function freshDb(): Promise<NodeSqlExecutor> {
   const db = NodeSqlExecutor.open();
   await migrate(db);
+  await attachVault(db, { id: VID, path: "/vault" });
   return db;
 }
 
@@ -28,8 +32,8 @@ async function seedCourse(db: NodeSqlExecutor, domainId: string, title: string, 
 describe("getDashboardSummary — totals & progress (US1)", () => {
   it("counts domains/courses/milestones and the status breakdown with percentDone", async () => {
     const db = await freshDb();
-    const math = await createDomain(db, { name: "Math", color: "#8b6cef" });
-    const cs = await createDomain(db, { name: "CS", color: "#00bfbc" });
+    const math = await createDomain(db, VID, { name: "Math", color: "#8b6cef" });
+    const cs = await createDomain(db, VID, { name: "CS", color: "#00bfbc" });
     // 30 milestones total, 12 done → 40%.
     await seedCourse(db, math.id, "Real Analysis", [
       ...Array<MilestoneStatus>(8).fill("done"),
@@ -41,7 +45,7 @@ describe("getDashboardSummary — totals & progress (US1)", () => {
       ...Array<MilestoneStatus>(6).fill("todo"),
     ]);
 
-    const s = await getDashboardSummary(db);
+    const s = await getDashboardSummary(db, VID);
 
     expect(s.totals).toEqual({ domains: 2, courses: 2, milestones: 30 });
     expect(s.milestoneProgress).toEqual({ todo: 12, inProgress: 6, done: 12, total: 30, percentDone: 40 });
@@ -51,7 +55,7 @@ describe("getDashboardSummary — totals & progress (US1)", () => {
 describe("getDashboardSummary — edge data (US1 · FR-010)", () => {
   it("empty database → all zeros, percentDone 0 (no NaN), empty allocation", async () => {
     const db = await freshDb();
-    const s = await getDashboardSummary(db);
+    const s = await getDashboardSummary(db, VID);
     expect(s.totals).toEqual({ domains: 0, courses: 0, milestones: 0 });
     expect(s.milestoneProgress).toEqual({ todo: 0, inProgress: 0, done: 0, total: 0, percentDone: 0 });
     expect(Number.isNaN(s.milestoneProgress.percentDone)).toBe(false);
@@ -60,9 +64,9 @@ describe("getDashboardSummary — edge data (US1 · FR-010)", () => {
 
   it("a Course with no Milestones counts as a Course but contributes no milestones", async () => {
     const db = await freshDb();
-    const d = await createDomain(db, { name: "Math", color: "#8b6cef" });
+    const d = await createDomain(db, VID, { name: "Math", color: "#8b6cef" });
     await createCourse(db, { title: "Empty Course", domainId: d.id });
-    const s = await getDashboardSummary(db);
+    const s = await getDashboardSummary(db, VID);
     expect(s.totals).toEqual({ domains: 1, courses: 1, milestones: 0 });
     expect(s.milestoneProgress.percentDone).toBe(0);
     expect(s.allocation[0]).toMatchObject({ courseCount: 1, milestoneCount: 0 });
@@ -72,14 +76,14 @@ describe("getDashboardSummary — edge data (US1 · FR-010)", () => {
 describe("getDashboardSummary — allocation (US2 · FR-003)", () => {
   it("includes Domains with zero Courses, carries colors, and sums back to totals; ordered by name", async () => {
     const db = await freshDb();
-    const math = await createDomain(db, { name: "Math", color: "#8b6cef" });
-    const cs = await createDomain(db, { name: "CS", color: "#00bfbc" });
-    await createDomain(db, { name: "Zoology", color: "#ffaa00" }); // no courses
+    const math = await createDomain(db, VID, { name: "Math", color: "#8b6cef" });
+    const cs = await createDomain(db, VID, { name: "CS", color: "#00bfbc" });
+    await createDomain(db, VID, { name: "Zoology", color: "#ffaa00" }); // no courses
     await seedCourse(db, math.id, "Real Analysis", ["done", "todo"]);
     await seedCourse(db, math.id, "Topology", ["in-progress"]);
     await seedCourse(db, cs.id, "Algorithms", ["todo", "todo", "done"]);
 
-    const s = await getDashboardSummary(db);
+    const s = await getDashboardSummary(db, VID);
 
     // Ordered by name: CS, Math, Zoology.
     expect(s.allocation.map((a) => a.name)).toEqual(["CS", "Math", "Zoology"]);

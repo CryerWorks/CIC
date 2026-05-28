@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
 import { useDb } from "../../providers/DbProvider";
+import { useActiveVaultId } from "../../providers/VaultProvider";
 import {
   createDomain,
   listDomains,
@@ -45,34 +46,45 @@ const msgOf = (e: unknown, fallback: string) => (e instanceof Error ? e.message 
 
 export function useDomains() {
   const db = useDb();
+  // The Domains screen is vault-gated (FR-006), so the id is non-null at runtime; keyed on it so a
+  // vault switch re-scopes the list (FR-007).
+  const vaultId = useActiveVaultId();
   const [domains, setDomains] = useState<Domain[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    setDomains(await listDomains(db));
-  }, [db]);
+    if (!vaultId) return;
+    setDomains(await listDomains(db, vaultId));
+  }, [db, vaultId]);
 
   useEffect(() => {
+    if (!vaultId) return;
     let active = true;
-    listDomains(db)
+    listDomains(db, vaultId)
       .then((rows) => active && setDomains(rows))
       .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [db]);
+  }, [db, vaultId]);
 
   const create = useCallback(
     async (input: DomainInput): Promise<MutationResult> => {
+      if (!vaultId) return { ok: false, error: "Connect a vault first" };
       const name = input.name.trim();
       const invalid = validate({ name, color: input.color }, domains);
       if (invalid) return { ok: false, error: invalid };
 
       const snapshot = domains;
-      const optimistic: Domain = { id: `optimistic-${crypto.randomUUID()}`, name, color: input.color };
+      const optimistic: Domain = {
+        id: `optimistic-${crypto.randomUUID()}`,
+        name,
+        color: input.color,
+        vault_id: vaultId,
+      };
       setDomains([...snapshot, optimistic]);
       try {
-        const saved = await createDomain(db, { name, color: input.color });
+        const saved = await createDomain(db, vaultId, { name, color: input.color });
         setDomains((cur) => cur.map((d) => (d.id === optimistic.id ? saved : d)));
         return { ok: true };
       } catch (e) {
@@ -80,7 +92,7 @@ export function useDomains() {
         return { ok: false, error: msgOf(e, "Failed to save the domain") };
       }
     },
-    [db, domains],
+    [db, vaultId, domains],
   );
 
   const edit = useCallback(

@@ -5,6 +5,7 @@ import { join, dirname } from "node:path";
 import { NodeSqlExecutor } from "../../../db/adapters/node";
 import {
   migrate,
+  attachVault,
   findOrCreateDomainByName,
   createCourse,
   createMilestone,
@@ -17,6 +18,8 @@ import { makeTempVault, type TempVault } from "../../../vault/test-support";
 import { materializeCourse } from "./materialize";
 import { rescanCourses } from "./rescan";
 import type { MocModel } from "../moc";
+
+const VID = "vault-1";
 
 const vaults: TempVault[] = [];
 function tempVault(): TempVault {
@@ -31,6 +34,7 @@ afterEach(() => {
 async function freshDb(): Promise<NodeSqlExecutor> {
   const db = NodeSqlExecutor.open();
   await migrate(db);
+  await attachVault(db, { id: VID, path: "/vault" });
   return db;
 }
 
@@ -63,8 +67,8 @@ function mocFile(id: string, title: string, domain: string, milestoneLines: stri
 }
 
 /** Create + materialize a course; returns its id and MOC path. */
-async function makeCourse(db: NodeSqlExecutor, vault: { reader: TempVault["reader"]; writer: TempVault["writer"] }, title: string) {
-  const domain = await findOrCreateDomainByName(db, "Mathematics");
+async function makeCourse(db: NodeSqlExecutor, vault: Pick<TempVault, "reader" | "writer" | "identity">, title: string) {
+  const domain = await findOrCreateDomainByName(db, VID, "Mathematics");
   const course = await createCourse(db, { title, domainId: domain.id });
   const m1 = await createMilestone(db, { courseId: course.id, capability: "Define a limit", orderIndex: 0 });
   const model: MocModel = {
@@ -83,7 +87,7 @@ describe("rescanCourses (US3)", () => {
   it("reflects MOC milestone edits back into the app, leaving the file in place (SC-003)", async () => {
     const db = await freshDb();
     const tv = tempVault();
-    const vault = { reader: tv.reader, writer: tv.writer };
+    const vault = { reader: tv.reader, writer: tv.writer, identity: tv.identity };
     const { courseId, mocPath } = await makeCourse(db, vault, "Real Analysis");
 
     // Hand-add a milestone line inside the managed block (as if edited in Obsidian).
@@ -96,7 +100,7 @@ describe("rescanCourses (US3)", () => {
       ),
     );
 
-    const report = await rescanCourses({ vault, db });
+    const report = await rescanCourses({ vault, db }, VID);
     expect(report.updated).toBe(1);
     expect(await tv.reader.exists(mocPath)).toBe(true); // never deleted
 
@@ -110,11 +114,11 @@ describe("rescanCourses (US3)", () => {
     const id = crypto.randomUUID();
     writeRaw(tv.vaultPath, "Courses/Topology.md", mocFile(id, "Topology", "Geometry", ["- [ ] Define open sets"]));
 
-    const report = await rescanCourses({ vault: { reader: tv.reader, writer: tv.writer }, db });
+    const report = await rescanCourses({ vault: { reader: tv.reader, writer: tv.writer, identity: tv.identity }, db }, VID);
 
     expect(report.imported).toBe(1);
     expect((await getCourse(db, id))?.title).toBe("Topology");
-    expect((await listDomains(db)).some((d) => d.name === "Geometry")).toBe(true);
+    expect((await listDomains(db, VID)).some((d) => d.name === "Geometry")).toBe(true);
   });
 
   it("ignores Markdown files that are not CIC Course MOCs", async () => {
@@ -122,9 +126,9 @@ describe("rescanCourses (US3)", () => {
     const tv = tempVault();
     writeRaw(tv.vaultPath, "Notes/Hello.md", "# Hello\n\nJust a note.\n");
 
-    const report = await rescanCourses({ vault: { reader: tv.reader, writer: tv.writer }, db });
+    const report = await rescanCourses({ vault: { reader: tv.reader, writer: tv.writer, identity: tv.identity }, db }, VID);
     expect(report.results).toHaveLength(0);
-    expect(await listCourses(db)).toHaveLength(0);
+    expect(await listCourses(db, VID)).toHaveLength(0);
   });
 
   it("skips a CIC MOC with a broken body, with a note (FR-019)", async () => {
@@ -149,7 +153,7 @@ describe("rescanCourses (US3)", () => {
       ].join("\n"),
     );
 
-    const report = await rescanCourses({ vault: { reader: tv.reader, writer: tv.writer }, db });
+    const report = await rescanCourses({ vault: { reader: tv.reader, writer: tv.writer, identity: tv.identity }, db }, VID);
     const broken = report.results.find((r) => r.path === "Courses/Broken.md");
     expect(broken?.outcome).toBe("skipped");
     expect(broken?.note).toBeTruthy();
@@ -159,7 +163,7 @@ describe("rescanCourses (US3)", () => {
   it("re-matches a moved/renamed MOC by cic-id and updates moc_path (FR-016)", async () => {
     const db = await freshDb();
     const tv = tempVault();
-    const vault = { reader: tv.reader, writer: tv.writer };
+    const vault = { reader: tv.reader, writer: tv.writer, identity: tv.identity };
     const { courseId, mocPath } = await makeCourse(db, vault, "Real Analysis");
 
     // Simulate a rename in Obsidian: same content, new path, old file gone.
@@ -167,23 +171,23 @@ describe("rescanCourses (US3)", () => {
     rmSync(join(tv.vaultPath, mocPath));
     writeRaw(tv.vaultPath, "Courses/Renamed.md", content);
 
-    const report = await rescanCourses({ vault, db });
+    const report = await rescanCourses({ vault, db }, VID);
     expect(report.updated).toBe(1);
     expect((await getCourse(db, courseId))?.moc_path).toBe("Courses/Renamed.md");
-    expect(await listCourses(db)).toHaveLength(1); // not duplicated
+    expect(await listCourses(db, VID)).toHaveLength(1); // not duplicated
   });
 
   it("is idempotent — a second rescan changes nothing", async () => {
     const db = await freshDb();
     const tv = tempVault();
-    const vault = { reader: tv.reader, writer: tv.writer };
+    const vault = { reader: tv.reader, writer: tv.writer, identity: tv.identity };
     const { courseId } = await makeCourse(db, vault, "Real Analysis");
 
-    await rescanCourses({ vault, db });
-    const after1 = await listCourses(db);
-    await rescanCourses({ vault, db });
+    await rescanCourses({ vault, db }, VID);
+    const after1 = await listCourses(db, VID);
+    await rescanCourses({ vault, db }, VID);
 
-    expect(await listCourses(db)).toHaveLength(after1.length);
+    expect(await listCourses(db, VID)).toHaveLength(after1.length);
     expect(await listMilestonesByCourse(db, courseId)).toHaveLength(1);
   });
 });

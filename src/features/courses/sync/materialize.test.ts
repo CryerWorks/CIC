@@ -3,10 +3,12 @@ import { describe, it, expect, afterEach } from "vitest";
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { NodeSqlExecutor } from "../../../db/adapters/node";
-import { migrate, createDomain, createCourse, createMilestone, listCourses } from "../../../db";
+import { migrate, attachVault, createDomain, createCourse, createMilestone, listCourses } from "../../../db";
 import { makeTempVault, type TempVault } from "../../../vault/test-support";
 import { materializeCourse, reapplyCourse } from "./materialize";
 import type { MocModel } from "../moc";
+
+const VID = "vault-1";
 
 const vaults: TempVault[] = [];
 function tempVault(): TempVault {
@@ -21,7 +23,8 @@ afterEach(() => {
 async function setup() {
   const db = NodeSqlExecutor.open();
   await migrate(db);
-  const domain = await createDomain(db, { name: "Mathematics", color: "#8b6cef" });
+  await attachVault(db, { id: VID, path: "/vault" });
+  const domain = await createDomain(db, VID, { name: "Mathematics", color: "#8b6cef" });
   const course = await createCourse(db, { title: "Real Analysis", domainId: domain.id });
   const m1 = await createMilestone(db, { courseId: course.id, capability: "Define a limit", orderIndex: 0 });
   const m2 = await createMilestone(db, {
@@ -49,7 +52,7 @@ describe("materializeCourse — new file (US1)", () => {
       ],
     };
 
-    const result = await materializeCourse({ vault: { reader: tv.reader, writer: tv.writer }, db }, model);
+    const result = await materializeCourse({ vault: { reader: tv.reader, writer: tv.writer, identity: tv.identity }, db }, model);
 
     expect(result.status).toBe("written");
     if (result.status !== "written") return;
@@ -62,14 +65,14 @@ describe("materializeCourse — new file (US1)", () => {
     expect(note.body).toContain(`- [ ] Define a limit <!-- cic:m id=${m1.id} status=todo -->`);
     expect(note.body).toContain(`- [x] Prove continuity <!-- cic:m id=${m2.id} status=done -->`);
 
-    const courses = await listCourses(db);
+    const courses = await listCourses(db, VID);
     expect(courses[0].moc_path).toBe("Courses/Real Analysis.md");
   });
 
   it("avoids filename collisions across distinct courses", async () => {
     const { db, domain, course } = await setup();
     const tv = tempVault();
-    const deps = { vault: { reader: tv.reader, writer: tv.writer }, db };
+    const deps = { vault: { reader: tv.reader, writer: tv.writer, identity: tv.identity }, db };
     const other = await createCourse(db, { title: "Real Analysis", domainId: domain.id });
 
     const empty = (id: string): MocModel => ({
@@ -104,7 +107,7 @@ describe("materializeCourse — update & drift (US2)", () => {
   it("updates an existing MOC in place when there is no external drift", async () => {
     const { db, course, m1 } = await setup();
     const tv = tempVault();
-    const deps = { vault: { reader: tv.reader, writer: tv.writer }, db };
+    const deps = { vault: { reader: tv.reader, writer: tv.writer, identity: tv.identity }, db };
 
     await materializeCourse(deps, modelV1(course.id, m1.id));
     const res = await materializeCourse(deps, { ...modelV1(course.id, m1.id), capability: "v2 capability." });
@@ -118,7 +121,7 @@ describe("materializeCourse — update & drift (US2)", () => {
   it("preserves user content; external drift → conflict → reapply rewrites without loss", async () => {
     const { db, course, m1 } = await setup();
     const tv = tempVault();
-    const deps = { vault: { reader: tv.reader, writer: tv.writer }, db };
+    const deps = { vault: { reader: tv.reader, writer: tv.writer, identity: tv.identity }, db };
 
     await materializeCourse(deps, modelV1(course.id, m1.id));
 

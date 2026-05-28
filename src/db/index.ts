@@ -30,6 +30,9 @@ export * from "./repositories/campaigns";
 // Feature 008: read-only dashboard read-model (aggregate summary over the core hierarchy).
 export * from "./repositories/dashboard";
 
+// Feature 009: per-vault dataset bookkeeping (vault records + adoption of pre-feature data).
+export * from "./repositories/vaults";
+
 // Feature 005: the vault-write fingerprint record (conflict detection). Consumed by the vault
 // layer's VaultWriteLog at its composition root.
 export * from "./repositories/vaultWrites";

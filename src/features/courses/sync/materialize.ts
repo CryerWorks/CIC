@@ -7,7 +7,7 @@
  */
 
 import type { SqlExecutor } from "../../../db";
-import { getCourse, listCourses, updateCourse } from "../../../db";
+import { getCourse, listCourseMocPaths, updateCourse } from "../../../db";
 import type { Vault } from "../../../vault";
 import {
   buildFrontmatter,
@@ -29,9 +29,7 @@ export type MaterializeResult =
 /** Resolve the MOC path for a course: its existing `moc_path`, else a fresh unique slug. */
 async function resolvePath(db: SqlExecutor, model: MocModel, existingPath: string | null): Promise<string> {
   if (existingPath) return existingPath;
-  const taken = (await listCourses(db))
-    .map((c) => c.moc_path)
-    .filter((p): p is string => p !== null);
+  const taken = await listCourseMocPaths(db);
   return mocRelPathFor(model.title, taken);
 }
 

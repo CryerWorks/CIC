@@ -31,9 +31,18 @@ export async function listCoursesByDomain(db: SqlExecutor, domainId: string): Pr
   );
 }
 
-/** All Courses (the screen groups them by Domain). Ordered by title. */
-export async function listCourses(db: SqlExecutor): Promise<Course[]> {
-  return selectParsed(db, CourseSchema, "SELECT * FROM courses ORDER BY title");
+/** All Courses in the active vault (Feature 009 — scoped via the owning Domain). The screen groups
+ *  them by Domain. Ordered by title. */
+export async function listCourses(db: SqlExecutor, vaultId: string): Promise<Course[]> {
+  return selectParsed(
+    db,
+    CourseSchema,
+    `SELECT c.* FROM courses c
+     JOIN domains d ON d.id = c.domain_id
+     WHERE d.vault_id = ?
+     ORDER BY c.title`,
+    [vaultId],
+  );
 }
 
 /** Patch mutable fields (Feature 007). Pass only what changes; returns the parsed, updated row. */
@@ -57,6 +66,16 @@ export async function updateCourse(
  *  hard-delete) — the DB never touches `.md`. */
 export async function deleteCourse(db: SqlExecutor, id: string): Promise<void> {
   await db.execute("DELETE FROM courses WHERE id = ?", [id]);
+}
+
+/** All non-null MOC paths across every vault — for slug-collision avoidance when minting a new
+ *  MOC filename (Feature 007). Intentionally unscoped: a vault-relative path being free in the
+ *  active vault is what matters, and being conservative across vaults is harmless. */
+export async function listCourseMocPaths(db: SqlExecutor): Promise<string[]> {
+  const rows = await db.select<{ moc_path: string | null }>(
+    "SELECT moc_path FROM courses WHERE moc_path IS NOT NULL",
+  );
+  return rows.map((r) => r.moc_path).filter((p): p is string => p !== null);
 }
 
 /** Find a Course by its MOC path (read-back helper). */
