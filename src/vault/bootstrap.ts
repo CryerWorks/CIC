@@ -8,7 +8,7 @@
  * R1); the folder-picker/settings that set and persist it are a later feature.
  */
 
-import { type SqlExecutor, recordVaultWrite, getVaultWrite } from "../db";
+import { type SqlExecutor, recordVaultWrite, getVaultWrite, forgetVaultWrite } from "../db";
 import { TauriVaultFs } from "./adapters/tauri";
 import { VaultReader } from "./reader";
 import { VaultWriter } from "./writer";
@@ -32,6 +32,9 @@ export function createVault(opts: { vaultPath: string; db: SqlExecutor }): Vault
     },
     async record(relPath: string, fingerprint: Fingerprint): Promise<void> {
       await recordVaultWrite(db, relPath, fingerprint);
+    },
+    async forget(relPath: string): Promise<void> {
+      await forgetVaultWrite(db, relPath);
     },
   };
 

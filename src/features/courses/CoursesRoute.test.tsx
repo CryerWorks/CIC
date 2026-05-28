@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { CoursesRoute } from "./CoursesRoute";
 import {
@@ -158,6 +158,64 @@ function writeRawMoc(vaultPath: string, rel: string, id: string, title: string, 
   mkdirSync(dirname(abs), { recursive: true });
   writeFileSync(abs, content);
 }
+
+describe("CoursesRoute — delete (Feature 007)", () => {
+  it("detach keeps the MOC in the vault and removes the course from the list", async () => {
+    const db = await seedDomainDb();
+    const { connect, tv } = realVaultConnector();
+    renderWithVault({ children: <CoursesRoute />, connect, initialize: () => Promise.resolve(db) });
+
+    await createCourseInUI("Real Analysis");
+    const abs = join(tv.vaultPath, "Courses", "Real Analysis.md");
+    expect(existsSync(abs)).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    // The dialog defaults to "Keep the note in my vault".
+    await userEvent.click(screen.getByRole("button", { name: "Delete course" }));
+
+    await waitFor(() => expect(screen.queryByText("Real Analysis")).toBeNull());
+    expect(existsSync(abs)).toBe(true); // note preserved
+    expect(readFileSync(abs, "utf8")).not.toContain("cic-type"); // detached → won't re-import
+  });
+
+  it("hard-delete removes both the course and its MOC file", async () => {
+    const db = await seedDomainDb();
+    const { connect, tv } = realVaultConnector();
+    renderWithVault({ children: <CoursesRoute />, connect, initialize: () => Promise.resolve(db) });
+
+    await createCourseInUI("Real Analysis");
+    const abs = join(tv.vaultPath, "Courses", "Real Analysis.md");
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(screen.getByRole("radio", { name: /also delete the moc file/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete course" }));
+
+    await waitFor(() => expect(screen.queryByText("Real Analysis")).toBeNull());
+    expect(existsSync(abs)).toBe(false);
+  });
+
+  it("surfaces drift on a hard-delete and removes everything on 'Delete anyway'", async () => {
+    const db = await seedDomainDb();
+    const { connect, tv } = realVaultConnector();
+    renderWithVault({ children: <CoursesRoute />, connect, initialize: () => Promise.resolve(db) });
+
+    await createCourseInUI("Real Analysis");
+    const abs = join(tv.vaultPath, "Courses", "Real Analysis.md");
+    writeFileSync(abs, `${readFileSync(abs, "utf8")}\nEdited in Obsidian.\n`);
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await userEvent.click(screen.getByRole("radio", { name: /also delete the moc file/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete course" }));
+
+    expect(await screen.findByText(/MOC changed in Obsidian/i)).toBeTruthy();
+    expect(existsSync(abs)).toBe(true); // not removed yet
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete anyway" }));
+
+    await waitFor(() => expect(screen.queryByText("Real Analysis")).toBeNull());
+    expect(existsSync(abs)).toBe(false);
+  });
+});
 
 describe("CoursesRoute — rescan (US3 · FR-015/017)", () => {
   it("imports a CIC MOC already present in the vault on mount (boot rescan)", async () => {

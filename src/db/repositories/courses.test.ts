@@ -3,7 +3,8 @@ import { describe, it, expect } from "vitest";
 import { NodeSqlExecutor } from "../adapters/node";
 import { migrate } from "../migrate";
 import { createDomain } from "./domains";
-import { createCourse, listCourses, updateCourse } from "./courses";
+import { createCourse, listCourses, updateCourse, getCourse, deleteCourse } from "./courses";
+import { createMilestone, listMilestonesByCourse } from "./milestones";
 import { createCampaign, listCampaignsByDomain, getCampaign } from "./campaigns";
 
 async function freshDb(): Promise<NodeSqlExecutor> {
@@ -33,6 +34,18 @@ describe("courses repo additions (US1)", () => {
     const renamed = await updateCourse(db, c.id, { title: "Real Analysis" });
     expect(renamed.title).toBe("Real Analysis");
     expect(renamed.moc_path).toBe("Courses/RA.md"); // untouched by the title patch
+  });
+
+  it("deleteCourse removes the course and cascades its milestones", async () => {
+    const db = await freshDb();
+    const d = await createDomain(db, { name: "Math", color: "#8b6cef" });
+    const c = await createCourse(db, { title: "RA", domainId: d.id });
+    await createMilestone(db, { courseId: c.id, capability: "Define a limit", orderIndex: 0 });
+
+    await deleteCourse(db, c.id);
+
+    expect(await getCourse(db, c.id)).toBeNull();
+    expect(await listMilestonesByCourse(db, c.id)).toHaveLength(0);
   });
 });
 

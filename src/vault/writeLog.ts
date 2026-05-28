@@ -14,4 +14,7 @@ export interface VaultWriteLog {
   get(relPath: string): Promise<Fingerprint | null>;
   /** Record `relPath`'s fingerprint after a successful write (FR-008); upserts on the path. */
   record(relPath: string, fingerprint: Fingerprint): Promise<void>;
+  /** Drop `relPath`'s record after its note is deleted, so a file later appearing at the same
+   *  path is treated as "unmanaged" (a conflict) rather than silently overwritable. Idempotent. */
+  forget(relPath: string): Promise<void>;
 }

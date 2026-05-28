@@ -68,7 +68,8 @@ The learner edits a Course MOC directly in Obsidian — revises the Capability p
 - **Pre-existing file at the target path** (not written by the app): never-clobber — the app does not overwrite it; it surfaces the conflict and does not lose the user's file.
 - **External-edit drift on in-app save**: detected; surfaced to the user; never silently overwritten.
 - **Read-back parse failure** (bad frontmatter / missing markers): the offending file is skipped with a surfaced notice; other files still reconcile.
-- **Course deletion** (if offered): removes only the in-app record; the MOC file in the vault is never deleted by the app.
+- **Course deletion** (v0.9.2): always removes the in-app record; the user explicitly chooses the MOC's fate — *Detach* (default, keeps the note, strips the CIC identity marker so it won't re-import) or *Delete the MOC too* (the one user-confirmed, never-clobber-aware exception to "the app never deletes a vault file").
+- **Hard-delete of a drifted MOC**: a "Delete the MOC too" on a file edited outside the app is refused and surfaced ("Delete anyway?"); the file is never silently removed.
 - **Campaign omitted**: a Course with no Campaign materializes and lists normally.
 
 ## Requirements *(mandatory)*
@@ -102,7 +103,13 @@ The learner edits a Course MOC directly in Obsidian — revises the Capability p
 - **FR-017**: When a CIC Course MOC exists in the vault with no corresponding in-app Course, the system MUST create the Course from the file.
 - **FR-018**: The system MUST ignore vault Markdown files that are not CIC Course MOCs (they are never turned into Courses).
 - **FR-019**: On encountering an unreadable or malformed MOC, the system MUST skip it and surface a notice, without crashing and without corrupting other data.
-- **FR-020**: The system MUST never delete a vault file as part of read-back or Course deletion (the vault is canonical and sacred).
+- **FR-020**: The system MUST never delete a vault file during read-back, and MUST never delete a vault file *implicitly* (the vault is canonical and sacred). The sole deletion path is the explicit Course-deletion choice in FR-023.
+
+**Course deletion (folded in, v0.9.2)**
+
+- **FR-021**: Users MUST be able to delete a Course. Deletion MUST always remove the Course's in-app record and its dependent rows (Milestones, etc.).
+- **FR-022**: When the Course has a materialized MOC, deletion MUST require the user to choose its disposition: **Detach** (default) keeps the note in the vault but removes its CIC identity marker so a rescan will not re-import it, preserving all user-owned content (including Reflections); or **Delete the MOC too** removes the file.
+- **FR-023**: Deleting the MOC file MUST be user-initiated and confirmed, MUST route through the single VaultWriter, and MUST be never-clobber-aware — a MOC that drifted externally or was never app-managed MUST be refused and surfaced ("Delete anyway?") rather than silently removed. This is the only sanctioned vault-file deletion path.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -120,7 +127,7 @@ The learner edits a Course MOC directly in Obsidian — revises the Capability p
 - **SC-002**: 100% of in-app Course edits preserve user-owned MOC content (the Reflections section and any out-of-marker text) — zero data loss across edits.
 - **SC-003**: After editing a Course MOC in Obsidian and rescanning, the app and the file agree in 100% of supported edit cases (Capability change; Milestone add / edit / reorder / retire).
 - **SC-004**: Every materialized MOC renders as a sensible, readable document in plain Obsidian with no plugin installed — verifiable by opening the file.
-- **SC-005**: No Course operation ever deletes, truncates, or partially corrupts a vault file — including under external-edit drift or an interrupted write (the never-clobber guarantee holds in 100% of cases).
+- **SC-005**: No Course operation ever *implicitly* deletes, truncates, or partially corrupts a vault file — including under external-edit drift or an interrupted write (the never-clobber guarantee holds in 100% of cases). The only file deletion is the explicit, user-confirmed "Delete the MOC too" choice (FR-022/023).
 - **SC-006**: A CIC Course MOC present in the vault but unknown to the app is imported as a Course on the next rescan, while non-CIC Markdown files are left untouched.
 
 ## Assumptions
@@ -131,7 +138,7 @@ The learner edits a Course MOC directly in Obsidian — revises the Capability p
 - The MOC body structure is the locked PRD v0.7 template. This feature populates Capability + Milestones and writes the remaining sections (Resources, Active Projects, Recent Sessions, Notes) as empty marked placeholders for later features to fill.
 - Read-back treats only the app-managed sections as authoritative for app data; user-owned regions are read for preservation but never drive app records.
 - "Rescan on app open" fires when the app starts or the vault becomes active; a manual Rescan action is also provided. Live file-watching is explicitly out of scope (deferred).
-- If Course deletion is offered, it removes only the in-app record; the app never deletes the vault file.
+- Course deletion (v0.9.2) always removes the in-app record; the MOC file is only removed when the user explicitly picks "Delete the MOC too" — otherwise the note is detached (kept, de-identified) and never deleted.
 - The existing Course / Campaign / Milestone / Domain data model and its repositories are reused as-is; no new persistent schema is introduced by this feature.
 - Single local user; no authentication or multi-user concerns.
 

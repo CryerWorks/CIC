@@ -142,6 +142,19 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 
 ---
 
+## Phase 7: Course deletion (folded in, v0.9.2)
+
+**Goal**: Delete a Course (always drops the DB rows); the user chooses the MOC's fate — Detach (keep, de-identify) or Delete the MOC too (the one sanctioned, never-clobber-aware vault-file deletion). Surfaced by the user after the US1–US3 quickstart passed; reconciled into PRD §F1 (v0.9.2) and spec FR-021/022/023.
+
+- [X] T044 Reconcile the deletion semantics into the PRD §F1 (v0.9.2) and spec.md (FR-020 amended; FR-021/022/023, edge cases, SC-005, assumptions) before coding (Constitution V).
+- [X] T045 Add `deleteCourse(db, id)` to `src/db/repositories/courses.ts` (cascade removes milestones); test in `courses.test.ts`.
+- [X] T046 Add never-clobber `VaultWriter.deleteNote` (+ `DeleteResult`, `DeleteOptions`) and a `VaultWriteLog.forget` (in-memory test log, bootstrap over new `forgetVaultWrite`) so a deleted path reverts to "unmanaged"; tests in `src/vault/writer.delete.test.ts`.
+- [X] T047 Add the sync orchestrator `removeCourse(deps, courseId, mode, opts)` (detach strips `cic-type`/`cic-id`; deleteFile via `deleteNote`; conflict leaves file + rows intact) in `src/features/courses/sync/delete.ts`; tests in `delete.test.ts`.
+- [X] T048 Wire `remove` into `useCourses`; add the two-mode `DeleteCourseDialog` (focus-trapped, "Delete anyway" on drift) and a Delete button into `CoursesRoute.tsx`; component tests for detach / hard-delete / drift→delete-anyway in `CoursesRoute.test.tsx`.
+- [ ] T049 Manual: in `tauri dev`, delete a leftover course with "Keep the note" and another with "Delete the MOC too"; confirm the kept note stays (and won't re-import on rescan) and the deleted file is gone.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase dependencies
@@ -197,6 +210,6 @@ Task: "Implement MilestonesEditor in src/features/courses/MilestonesEditor.tsx" 
 ## Notes
 - [P] = different file, no incomplete-task dependency.
 - The pure `moc/` module is I/O-free and must stay that way — no vault/db/React imports there (Constitution IV).
-- All `.md` writes go through `VaultWriter` only; no sync path deletes a vault file.
+- All `.md` writes go through `VaultWriter` only. The one path that deletes a vault file is `VaultWriter.deleteNote`, used solely by `removeCourse`'s explicit, user-confirmed "Delete the MOC too" (v0.9.2) — never implicitly, never on rescan.
 - Capability text lives in the MOC (no SQLite column); the edit flow reads it back via `parseMocBody` (data-model.md note).
 - Commit after each story/logical group; the working tree stays green (lint + tests).

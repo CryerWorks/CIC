@@ -21,6 +21,12 @@ import {
 } from "../../db";
 import { materializeCourse, reapplyCourse, type MaterializeResult } from "./sync/materialize";
 import { rescanCourses, type RescanReport } from "./sync/rescan";
+import {
+  removeCourse,
+  type DeleteCourseMode,
+  type RemoveCourseResult,
+  type RemoveCourseOptions,
+} from "./sync/delete";
 import { parseMocBody, MocParseError, type MocModel } from "./moc";
 
 /**
@@ -271,6 +277,19 @@ export function useCourses() {
     return report;
   }, [vault, db, refresh]);
 
+  const remove = useCallback(
+    async (
+      courseId: string,
+      mode: DeleteCourseMode,
+      opts: RemoveCourseOptions = {},
+    ): Promise<RemoveCourseResult> => {
+      const result = await removeCourse({ vault, db }, courseId, mode, opts);
+      if (result.status === "removed") await refresh();
+      return result;
+    },
+    [vault, db, refresh],
+  );
+
   // Read-back on app open: reconcile the vault into SQLite once when the screen first mounts
   // (the vault is already `ready` here). A manual `rescan()` covers later changes.
   const didBoot = useRef(false);
@@ -297,6 +316,7 @@ export function useCourses() {
     campaignsFor,
     create,
     edit,
+    remove,
     loadCourseForEdit,
     resolveDrift,
     rescan,

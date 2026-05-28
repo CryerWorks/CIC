@@ -38,3 +38,10 @@ export async function getVaultWrite(
   );
   return rows[0] ?? null;
 }
+
+/** Forget a file's recorded fingerprint (Feature 007). Called when a managed note is deleted, so
+ *  a later file at the same path is correctly treated as "unmanaged" rather than silently
+ *  overwritable. Idempotent — clearing an absent path is a no-op. */
+export async function forgetVaultWrite(db: SqlExecutor, filePath: string): Promise<void> {
+  await db.execute("DELETE FROM vault_writes WHERE file_path = ?", [filePath]);
+}

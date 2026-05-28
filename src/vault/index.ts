@@ -14,13 +14,13 @@ export type { VaultFs, VaultStat, VaultDirent } from "./fs";
 
 // Reader / writer surfaces (instances come from createVault; these are the types to annotate with).
 export type { VaultReader, RawNote } from "./reader";
-export type { VaultWriter, NoteInput, WriteOptions } from "./writer";
+export type { VaultWriter, NoteInput, WriteOptions, DeleteOptions } from "./writer";
 
 // The conflict-log seam (implemented over the 003 vault_writes repo at the composition root).
 export type { VaultWriteLog } from "./writeLog";
 
 // Result + value shapes.
-export type { Fingerprint, VaultNote, ReadOutcome, WriteResult } from "./errors";
+export type { Fingerprint, VaultNote, ReadOutcome, WriteResult, DeleteResult } from "./errors";
 
 // Typed errors (values — for `instanceof` checks at call sites).
 export { VaultPathError, FrontmatterParseError } from "./errors";

@@ -4,6 +4,8 @@ import { Panel, Button, Callout, Tag } from "../../components/ui";
 import { useVaultState } from "../../app/providers/VaultProvider";
 import { useCourses, type CourseInput, type CourseEditData } from "./useCourses";
 import { CourseForm } from "./CourseForm";
+import { DeleteCourseDialog } from "./DeleteCourseDialog";
+import type { Course } from "../../db";
 
 /** The Courses screen. Gates on a connected vault (Courses materialize into the vault), then
  *  delegates to the manager subtree that may call `useVault()`. */
@@ -41,12 +43,14 @@ function CoursesManager() {
     campaignsFor,
     create,
     edit,
+    remove,
     loadCourseForEdit,
     resolveDrift,
     rescan,
     hasPendingReapply,
   } = useCourses();
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [deleting, setDeleting] = useState<Course | null>(null);
   const [rescanMsg, setRescanMsg] = useState<string | null>(null);
 
   const handleSave = async (input: CourseInput) => {
@@ -178,6 +182,9 @@ function CoursesManager() {
                                 <Button size="sm" variant="secondary" onClick={() => void openEdit(c.id)}>
                                   Edit
                                 </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setDeleting(c)}>
+                                  Delete
+                                </Button>
                               </div>
                             </div>
                           </Panel>
@@ -189,6 +196,19 @@ function CoursesManager() {
             </div>
           )}
         </>
+      )}
+
+      {deleting && (
+        <DeleteCourseDialog
+          title={deleting.title}
+          mocPath={deleting.moc_path}
+          onCancel={() => setDeleting(null)}
+          onConfirm={async (mode, opts) => {
+            const result = await remove(deleting.id, mode, opts);
+            if (result.status === "removed") setDeleting(null);
+            return result;
+          }}
+        />
       )}
     </div>
   );

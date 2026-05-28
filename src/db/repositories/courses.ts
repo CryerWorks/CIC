@@ -52,6 +52,13 @@ export async function updateCourse(
   return rows[0];
 }
 
+/** Delete a Course (Feature 007). ON DELETE CASCADE removes its milestones, course_resources,
+ *  and other descendants. The vault MOC is reconciled separately by the sync layer (detach or
+ *  hard-delete) — the DB never touches `.md`. */
+export async function deleteCourse(db: SqlExecutor, id: string): Promise<void> {
+  await db.execute("DELETE FROM courses WHERE id = ?", [id]);
+}
+
 /** Find a Course by its MOC path (read-back helper). */
 export async function getCourseByMocPath(db: SqlExecutor, mocPath: string): Promise<Course | null> {
   const rows = await selectParsed(db, CourseSchema, "SELECT * FROM courses WHERE moc_path = ?", [mocPath]);
