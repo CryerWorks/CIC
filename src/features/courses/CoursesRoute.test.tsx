@@ -1,8 +1,8 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { join, dirname } from "node:path";
 import { CoursesRoute } from "./CoursesRoute";
 import {
   renderWithVault,
@@ -136,5 +136,50 @@ describe("CoursesRoute — edit & drift (US2 · FR-003/010/012)", () => {
 
     await waitFor(() => expect(screen.queryByText(/MOC changed in Obsidian/i)).toBeNull());
     expect(readFileSync(abs, "utf8")).toContain("External edit.");
+  });
+});
+
+function writeRawMoc(vaultPath: string, rel: string, id: string, title: string, domain: string) {
+  const content = [
+    "---",
+    "cic-type: course",
+    `cic-id: ${id}`,
+    `title: ${title}`,
+    `domain: ${domain}`,
+    "campaign: null",
+    "---",
+    "## Milestones",
+    "<!-- cic:milestones -->",
+    "- [ ] Define open sets",
+    "<!-- /cic:milestones -->",
+    "",
+  ].join("\n");
+  const abs = join(vaultPath, rel);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, content);
+}
+
+describe("CoursesRoute — rescan (US3 · FR-015/017)", () => {
+  it("imports a CIC MOC already present in the vault on mount (boot rescan)", async () => {
+    const db = await seedDomainDb();
+    const { connect, tv } = realVaultConnector();
+    writeRawMoc(tv.vaultPath, "Courses/Topology.md", crypto.randomUUID(), "Topology", "Mathematics");
+
+    renderWithVault({ children: <CoursesRoute />, connect, initialize: () => Promise.resolve(db) });
+
+    expect(await screen.findByText("Topology")).toBeTruthy();
+  });
+
+  it("manual Rescan vault picks up a newly-added MOC and reports it", async () => {
+    const db = await seedDomainDb();
+    const { connect, tv } = realVaultConnector();
+    renderWithVault({ children: <CoursesRoute />, connect, initialize: () => Promise.resolve(db) });
+
+    await screen.findByRole("button", { name: "Rescan vault" });
+    writeRawMoc(tv.vaultPath, "Courses/Topology.md", crypto.randomUUID(), "Topology", "Mathematics");
+    await userEvent.click(screen.getByRole("button", { name: "Rescan vault" }));
+
+    expect(await screen.findByText("Topology")).toBeTruthy();
+    expect(await screen.findByText(/rescan complete/i)).toBeTruthy();
   });
 });

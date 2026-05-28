@@ -117,17 +117,17 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 
 ### Repositories
 
-- [ ] T035 [P] [US3] Add `upsertCourseRow` + `getCourseByMocPath` to `src/db/repositories/courses.ts`, `syncCourseMilestones` to `src/db/repositories/milestones.ts`, `findOrCreateDomainByName` to `src/db/repositories/domains.ts`, and `findOrCreateCampaignByTitle` to `src/db/repositories/campaigns.ts`; add tests (upsert idempotency; syncCourseMilestones insert/update/delete-missing + order; findOrCreate* case-insensitive reuse) in the respective `*.test.ts`.
+- [X] T035 [P] [US3] Add `upsertCourseRow` + `getCourseByMocPath` to `src/db/repositories/courses.ts`, `syncCourseMilestones` to `src/db/repositories/milestones.ts`, `findOrCreateDomainByName` to `src/db/repositories/domains.ts`, and `findOrCreateCampaignByTitle` to `src/db/repositories/campaigns.ts`; add tests (upsert idempotency; syncCourseMilestones insert/update/delete-missing + order; findOrCreate* case-insensitive reuse) in the respective `*.test.ts`.
 
 ### Sync (rescan)
 
-- [ ] T036 [US3] Integration tests for `rescanCourses` (round-trip SC-003; import SC-006 + auto-create Domain; **moved/renamed file** — same `cic-id`, changed path → re-matches the existing Course and updates `moc_path`, FR-016; ignore non-CIC; malformed → skip-with-notice FR-019; idempotent; never calls `fs.remove` on a vault file) in `src/features/courses/sync/rescan.test.ts`.
-- [ ] T037 [US3] Implement `rescanCourses(deps)` in `src/features/courses/sync/rescan.ts`: `reader.list` → `readNoteAs(MocCourseFrontmatterSchema)` discriminate/skip → `parseMocBody` → resolve domain/campaign → `upsertCourseRow` → `syncCourseMilestones` (mint ids for comment-less lines) → `RescanReport` (depends on T016/T035; satisfies T036).
+- [X] T036 [US3] Integration tests for `rescanCourses` (round-trip SC-003; import SC-006 + auto-create Domain; **moved/renamed file** — same `cic-id`, changed path → re-matches the existing Course and updates `moc_path`, FR-016; ignore non-CIC; malformed → skip-with-notice FR-019; idempotent; never calls `fs.remove` on a vault file) in `src/features/courses/sync/rescan.test.ts`.
+- [X] T037 [US3] Implement `rescanCourses(deps)` in `src/features/courses/sync/rescan.ts`: `reader.list` → `readNoteAs(MocCourseFrontmatterSchema)` discriminate/skip → `parseMocBody` → resolve domain/campaign → `upsertCourseRow` → `syncCourseMilestones` (mint ids for comment-less lines) → `RescanReport` (depends on T016/T035; satisfies T036).
 
 ### UI (rescan action + boot trigger)
 
-- [ ] T038 [US3] Add a "Rescan vault" button to `src/features/courses/CoursesRoute.tsx` and a vault-ready boot trigger (run `rescanCourses` once when the vault becomes `ready`, refresh the list, surface a `RescanReport` summary) in `src/features/courses/useCourses.ts` (depends on T037).
-- [ ] T039 [US3] Component test for the rescan action + report surfacing using a fake vault reader returning one CIC MOC, in `src/features/courses/CoursesRoute.test.tsx` (extend) (depends on T038).
+- [X] T038 [US3] Add a "Rescan vault" button to `src/features/courses/CoursesRoute.tsx` and a vault-ready boot trigger (run `rescanCourses` once when the vault becomes `ready`, refresh the list, surface a `RescanReport` summary) in `src/features/courses/useCourses.ts` (depends on T037).
+- [X] T039 [US3] Component test for the rescan action + report surfacing using a fake vault reader returning one CIC MOC, in `src/features/courses/CoursesRoute.test.tsx` (extend) (depends on T038).
 
 **Checkpoint**: All three stories independently functional; the in-app ↔ vault loop is closed.
 
@@ -135,10 +135,10 @@ description: "Task list for Feature 007 — Course Authoring & MOC Materializati
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T040 [P] Add a `src/features/courses/index.ts` barrel if any cross-module import needs it; verify the ESLint vendor-import rule is unaffected by the new feature.
-- [ ] T041 Run the full gate — `npm run test` (Vitest), `tsc --noEmit` (strict), `npm run lint` — and fix any regressions (especially fallout from removing the placeholder `CoursesRoute`).
+- [X] T040 [P] Add a `src/features/courses/index.ts` barrel if any cross-module import needs it; verify the ESLint vendor-import rule is unaffected by the new feature.
+- [X] T041 Run the full gate — `npm run test` (Vitest), `tsc --noEmit` (strict), `npm run lint` — and fix any regressions (especially fallout from removing the placeholder `CoursesRoute`).
 - [ ] T042 Run the [quickstart.md](./quickstart.md) scenarios A–F in `npm run tauri dev` (manual runtime check — the live `VaultWriter` + Obsidian round-trip; the user's surface).
-- [ ] T043 [P] After implementation: update the CLAUDE.md SPECKIT block to "implemented". (The R2 capability-markers refinement was already reconciled into the PRD §F1 template as **v0.9.1** during `/speckit-analyze` — no further PRD action needed.)
+- [X] T043 [P] After implementation: update the CLAUDE.md SPECKIT block to "implemented". (The R2 capability-markers refinement was already reconciled into the PRD §F1 template as **v0.9.1** during `/speckit-analyze` — no further PRD action needed.)
 
 ---
 

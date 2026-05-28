@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { z } from "zod";
 import { useDb } from "../../app/providers/DbProvider";
 import { useVault } from "../../app/providers/VaultProvider";
@@ -20,6 +20,7 @@ import {
   type MilestoneStatus,
 } from "../../db";
 import { materializeCourse, reapplyCourse, type MaterializeResult } from "./sync/materialize";
+import { rescanCourses, type RescanReport } from "./sync/rescan";
 import { parseMocBody, MocParseError, type MocModel } from "./moc";
 
 /**
@@ -264,6 +265,25 @@ export function useCourses() {
     return result;
   }, [pendingReapply, vault, db, refresh]);
 
+  const rescan = useCallback(async (): Promise<RescanReport> => {
+    const report = await rescanCourses({ vault, db });
+    await refresh();
+    return report;
+  }, [vault, db, refresh]);
+
+  // Read-back on app open: reconcile the vault into SQLite once when the screen first mounts
+  // (the vault is already `ready` here). A manual `rescan()` covers later changes.
+  const didBoot = useRef(false);
+  useEffect(() => {
+    if (didBoot.current) return;
+    didBoot.current = true;
+    rescanCourses({ vault, db })
+      .then(() => refresh())
+      .catch(() => {
+        /* a bad file is reported per-file; a total failure simply leaves the list as-is */
+      });
+  }, [vault, db, refresh]);
+
   const groups: DomainGroup[] = domains.map((domain) => ({
     domain,
     courses: courses.filter((c) => c.domain_id === domain.id),
@@ -279,6 +299,7 @@ export function useCourses() {
     edit,
     loadCourseForEdit,
     resolveDrift,
+    rescan,
     hasPendingReapply: pendingReapply !== null,
   };
 }

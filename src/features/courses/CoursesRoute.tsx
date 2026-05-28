@@ -43,15 +43,24 @@ function CoursesManager() {
     edit,
     loadCourseForEdit,
     resolveDrift,
+    rescan,
     hasPendingReapply,
   } = useCourses();
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [rescanMsg, setRescanMsg] = useState<string | null>(null);
 
   const handleSave = async (input: CourseInput) => {
     const result = editor?.mode === "edit" ? await edit(editor.courseId, input) : await create(input);
     if (!result.ok) return { ok: false as const, error: result.error };
     setEditor(null); // a drift conflict (if any) is surfaced by the callout below
     return { ok: true as const };
+  };
+
+  const handleRescan = async () => {
+    const r = await rescan();
+    const parts = [`imported ${r.imported}`, `updated ${r.updated}`];
+    if (r.skipped) parts.push(`skipped ${r.skipped}`);
+    setRescanMsg(`Rescan complete — ${parts.join(", ")}.`);
   };
 
   const openEdit = async (courseId: string) => {
@@ -66,10 +75,23 @@ function CoursesManager() {
     <div className="mx-auto max-w-2xl">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-text">Courses</h1>
-        {editor === null && domains.length > 0 && (
-          <Button onClick={() => setEditor({ mode: "new" })}>New course</Button>
+        {editor === null && (
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => void handleRescan()}>
+              Rescan vault
+            </Button>
+            {domains.length > 0 && (
+              <Button onClick={() => setEditor({ mode: "new" })}>New course</Button>
+            )}
+          </div>
         )}
       </div>
+
+      {rescanMsg && (
+        <Callout variant="note" className="mb-4">
+          {rescanMsg}
+        </Callout>
+      )}
 
       {hasPendingReapply && (
         <Callout variant="warn" title="MOC changed in Obsidian" className="mb-4">

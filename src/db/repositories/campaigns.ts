@@ -26,3 +26,15 @@ export async function listCampaignsByDomain(db: SqlExecutor, domainId: string): 
     [domainId],
   );
 }
+
+/** Match a Campaign by title within a Domain (case-insensitive) or create it (read-back). */
+export async function findOrCreateCampaignByTitle(
+  db: SqlExecutor,
+  domainId: string,
+  title: string,
+): Promise<Campaign> {
+  const existing = (await listCampaignsByDomain(db, domainId)).find(
+    (c) => c.title.toLowerCase() === title.toLowerCase(),
+  );
+  return existing ?? createCampaign(db, { title, domainId });
+}
