@@ -72,11 +72,11 @@ The PRD is the source of truth; non-trivial features get a written spec before c
 - **[`PRD-CIC-Platform.md`](../../PRD-CIC-Platform.md) is the authoritative product spec.** Conflicts between code and PRD are resolved by updating the PRD first (or writing an addendum), then the code.
 - **Spec-kit workflow** is the per-feature loop: Constitution → Specify → Clarify (when ambiguous) → Plan → Tasks → Analyze (optional) → Implement.
 - **Prefer the full Phase 1 doc set** by default — research + data-model + all contracts + quickstart. Don't offer to skip artifacts to save time. Exception: genuinely trivial features that wouldn't warrant their own `spec.md` in the first place.
-- **User owns all git operations.** No `git add` / `commit` / `push` / `branch` / `checkout` / `rebase` / `merge` / `tag` / `reset` / `stash` without explicit per-action user request. Suggested commit messages may be authored as prose for the user to copy. Default to not running even read-only git commands (`status`, `log`, `diff`) unless explicitly asked.
+- **Assistant may run git operations** (granted 2026-05-28; reverses the original "user owns all git"). `status` / `diff` / `log` / `add` / `commit` / `branch` / `checkout` / `push` are part of the normal flow without per-action confirmation. Use Conventional Commits + the `Co-Authored-By: Claude` trailer; stage specific files (never `git add -A`); never commit secrets. **Confirm before destructive / irreversible ops** — force-push, `reset --hard`, history rewrites, branch/tag deletion — and never force-push to `main` without warning.
 - **End-of-feature walkthrough is mandatory** for every completed feature: end-to-end flow → data routing → business logic → call graph (with named files) → design rationale with alternatives rejected and PRD sections cited.
 - **Senior-review mindset.** Flag concerns the author wouldn't think to ask about: security, architecture, data integrity, error handling, testability, performance, accessibility, professional conventions.
 
-**Rationale:** This is a portfolio + learning project. The value is in the engineering decisions, not raw shipping velocity. Skipping spec artifacts, doing git on the user's behalf, or moving on without a walkthrough each cuts a corner on something the project exists to demonstrate.
+**Rationale:** This is a portfolio + learning project. The value is in the engineering decisions, not raw shipping velocity. Skipping spec artifacts or moving on without a walkthrough each cuts a corner on something the project exists to demonstrate. (Git was originally user-owned for the same reason; the user has since taken that discipline as understood and delegated routine git to the assistant, keeping a confirm-before-destructive guard.)
 
 ## Technology Constraints (Locked)
 
@@ -84,7 +84,7 @@ The PRD is the source of truth; non-trivial features get a written spec before c
 |---|---|---|
 | Desktop shell | **Tauri** | v0.5 |
 | Frontend | **React + TypeScript (strict) + Tailwind + Vite** — no Next.js shell | v0.5 |
-| Native bridges | `tauri-plugin-sql` · `tauri-plugin-fs` · `tauri-plugin-notification` | v0.5 |
+| Native bridges | `tauri-plugin-sql` · `tauri-plugin-fs` · `tauri-plugin-notification` · `tauri-plugin-dialog` | v0.5 (dialog: Const. 1.1.0) |
 | Tracking / SRS state | **SQLite** (local-only) | v0.5 |
 | Knowledge | **Obsidian vault** (Markdown, canonical) | v0.2 |
 | Vector store | `sqlite-vec` (default) or LanceDB | v0.5 |
@@ -112,7 +112,7 @@ The PRD is the source of truth; non-trivial features get a written spec before c
 6. `/speckit-analyze` *(optional)* — cross-artifact consistency check before implementation.
 7. `/speckit-implement` — execute. Pocock spine PRs merge before consuming features (Principle IV).
 8. **End-of-feature walkthrough** (mandatory, see Principle V).
-9. **User commits + pushes.** Spec-kit's `git` extension exists; the user owns its invocation, not the assistant.
+9. **Commit + push.** The assistant may run git as part of the normal flow (Principle V); spec-kit's `git` extension may be invoked. Destructive / irreversible ops still require user confirmation.
 
 **Quality gates** (verified before any feature is "done"):
 - TypeScript `strict` clean.
@@ -135,8 +135,9 @@ Amendments require:
 
 The `/speckit-analyze` step is the consistency gate — it verifies feature specs respect the Constitution before `/speckit-implement` runs.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-27 | **Last Amended**: 2026-05-27
+**Version**: 1.1.0 | **Ratified**: 2026-05-27 | **Last Amended**: 2026-05-28
 
 ## Changelog
 
+- **1.1.0** (2026-05-28) — MINOR. **Principle V git reversal:** the original "user owns all git operations" is reversed — the assistant may now run `status` / `diff` / `log` / `add` / `commit` / `branch` / `checkout` / `push` as part of the normal flow without per-action confirmation, retaining a confirm-before-destructive carve-out (force-push, `reset --hard`, history rewrites, branch/tag deletion; never force-push to `main` without warning). Workflow step 9 updated to match. **Locked-tech:** added `tauri-plugin-dialog` to native bridges — introduced by feature 006 for the OS vault-folder picker (the original three bridges remain v0.5). *Migration:* no code impact; project `CLAUDE.md` git convention note updated to match. Approved by user 2026-05-28.
 - **1.0.0** (2026-05-27) — Initial ratification. Five core principles (Vault Sacred · AI Tutor Not Oracle · Desirable Difficulty · Interface-First Deep Modules · Spec-Driven Development), locked technology constraints (Tauri + React + SQLite + vault + vendor-agnostic AI + FSRS + Obsidian theme), spec-kit-driven workflow, user-owned git, mandatory end-of-feature walkthroughs.

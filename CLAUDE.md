@@ -98,7 +98,7 @@ src-tauri/                # Rust shell + plugin config + capabilities allowlist
 - **Errors**: handle explicitly; AI/provider calls and vault/FS ops must fail gracefully (offline, bad parse, locked file). Never crash on a malformed note.
 - **No scattered prompts or model names**: prompts in `src/ai/prompts/`, model/routing in config.
 - **Tests**: Vitest. Core logic (FSRS scheduling, vault read/write, frontmatter parsing, blueprint materialization, provider routing) requires unit tests. Don't ship untested data-integrity code.
-- **Git**: small focused commits, Conventional Commits style; feature branches → PR → squash merge. Keep the working tree green (lint + tests).
+- **Git**: small focused commits, Conventional Commits style; feature branches → PR → squash merge. Keep the working tree green (lint + tests). The assistant may run git as part of the normal flow (Constitution §V, amended 2026-05-28) — stage specific files (never `git add -A`), add the `Co-Authored-By: Claude` trailer, never commit secrets, and confirm before destructive/irreversible ops (force-push, `reset --hard`, history rewrites, branch/tag deletion).
 
 ## Commands
 *(Finalize at scaffold time; expected:)*
