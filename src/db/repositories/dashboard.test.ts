@@ -1,0 +1,94 @@
+// @vitest-environment node
+import { describe, it, expect } from "vitest";
+import { NodeSqlExecutor } from "../adapters/node";
+import { migrate } from "../migrate";
+import { createDomain } from "./domains";
+import { createCourse } from "./courses";
+import { createMilestone } from "./milestones";
+import { getDashboardSummary } from "./dashboard";
+import type { MilestoneStatus } from "../models/enums";
+
+async function freshDb(): Promise<NodeSqlExecutor> {
+  const db = NodeSqlExecutor.open();
+  await migrate(db);
+  return db;
+}
+
+/** Seed `statuses.length` milestones under a fresh course in `domainId`. */
+async function seedCourse(db: NodeSqlExecutor, domainId: string, title: string, statuses: MilestoneStatus[]) {
+  const course = await createCourse(db, { title, domainId });
+  let order = 0;
+  for (const status of statuses) {
+    await createMilestone(db, { courseId: course.id, capability: `cap ${order}`, orderIndex: order, status });
+    order += 1;
+  }
+  return course;
+}
+
+describe("getDashboardSummary — totals & progress (US1)", () => {
+  it("counts domains/courses/milestones and the status breakdown with percentDone", async () => {
+    const db = await freshDb();
+    const math = await createDomain(db, { name: "Math", color: "#8b6cef" });
+    const cs = await createDomain(db, { name: "CS", color: "#00bfbc" });
+    // 30 milestones total, 12 done → 40%.
+    await seedCourse(db, math.id, "Real Analysis", [
+      ...Array<MilestoneStatus>(8).fill("done"),
+      ...Array<MilestoneStatus>(6).fill("in-progress"),
+      ...Array<MilestoneStatus>(6).fill("todo"),
+    ]);
+    await seedCourse(db, cs.id, "Algorithms", [
+      ...Array<MilestoneStatus>(4).fill("done"),
+      ...Array<MilestoneStatus>(6).fill("todo"),
+    ]);
+
+    const s = await getDashboardSummary(db);
+
+    expect(s.totals).toEqual({ domains: 2, courses: 2, milestones: 30 });
+    expect(s.milestoneProgress).toEqual({ todo: 12, inProgress: 6, done: 12, total: 30, percentDone: 40 });
+  });
+});
+
+describe("getDashboardSummary — edge data (US1 · FR-010)", () => {
+  it("empty database → all zeros, percentDone 0 (no NaN), empty allocation", async () => {
+    const db = await freshDb();
+    const s = await getDashboardSummary(db);
+    expect(s.totals).toEqual({ domains: 0, courses: 0, milestones: 0 });
+    expect(s.milestoneProgress).toEqual({ todo: 0, inProgress: 0, done: 0, total: 0, percentDone: 0 });
+    expect(Number.isNaN(s.milestoneProgress.percentDone)).toBe(false);
+    expect(s.allocation).toEqual([]);
+  });
+
+  it("a Course with no Milestones counts as a Course but contributes no milestones", async () => {
+    const db = await freshDb();
+    const d = await createDomain(db, { name: "Math", color: "#8b6cef" });
+    await createCourse(db, { title: "Empty Course", domainId: d.id });
+    const s = await getDashboardSummary(db);
+    expect(s.totals).toEqual({ domains: 1, courses: 1, milestones: 0 });
+    expect(s.milestoneProgress.percentDone).toBe(0);
+    expect(s.allocation[0]).toMatchObject({ courseCount: 1, milestoneCount: 0 });
+  });
+});
+
+describe("getDashboardSummary — allocation (US2 · FR-003)", () => {
+  it("includes Domains with zero Courses, carries colors, and sums back to totals; ordered by name", async () => {
+    const db = await freshDb();
+    const math = await createDomain(db, { name: "Math", color: "#8b6cef" });
+    const cs = await createDomain(db, { name: "CS", color: "#00bfbc" });
+    await createDomain(db, { name: "Zoology", color: "#ffaa00" }); // no courses
+    await seedCourse(db, math.id, "Real Analysis", ["done", "todo"]);
+    await seedCourse(db, math.id, "Topology", ["in-progress"]);
+    await seedCourse(db, cs.id, "Algorithms", ["todo", "todo", "done"]);
+
+    const s = await getDashboardSummary(db);
+
+    // Ordered by name: CS, Math, Zoology.
+    expect(s.allocation.map((a) => a.name)).toEqual(["CS", "Math", "Zoology"]);
+    const byName = Object.fromEntries(s.allocation.map((a) => [a.name, a]));
+    expect(byName.Math).toMatchObject({ color: "#8b6cef", courseCount: 2, milestoneCount: 3 });
+    expect(byName.CS).toMatchObject({ color: "#00bfbc", courseCount: 1, milestoneCount: 3 });
+    expect(byName.Zoology).toMatchObject({ courseCount: 0, milestoneCount: 0 }); // still present
+
+    expect(s.allocation.reduce((n, a) => n + a.courseCount, 0)).toBe(s.totals.courses);
+    expect(s.allocation.reduce((n, a) => n + a.milestoneCount, 0)).toBe(s.totals.milestones);
+  });
+});

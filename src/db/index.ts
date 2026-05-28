@@ -27,6 +27,9 @@ export * from "./repositories/courses";
 export * from "./repositories/milestones";
 export * from "./repositories/campaigns";
 
+// Feature 008: read-only dashboard read-model (aggregate summary over the core hierarchy).
+export * from "./repositories/dashboard";
+
 // Feature 005: the vault-write fingerprint record (conflict detection). Consumed by the vault
 // layer's VaultWriteLog at its composition root.
 export * from "./repositories/vaultWrites";
