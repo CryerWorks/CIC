@@ -138,3 +138,7 @@ Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root (both created
 ## Current focus
 **Phase 0 — Foundation rework.** Stand up the Tauri + React + Vite shell, port war-room's React components off the Next.js shell, replace Supabase/Postgres with SQLite (`tauri-plugin-sql`), wire `tauri-plugin-fs`, and establish the data model (PRD §8).
 **Definition of done:** a native desktop window showing the ported HUD, reading/writing local SQLite.
+
+<!-- SPECKIT START -->
+**Active feature:** `005-vault-layer` — **implemented**: the `src/vault/` spine has landed (Constitution I/IV). A `VaultFs` seam (`fs.ts`) with `adapters/tauri.ts` (sole `@tauri-apps/plugin-fs` importer) + `adapters/node.ts` (tests); pure `paths.ts` boundary; `fingerprint.ts` (mtime + SHA-256, content identity by hash); `VaultReader`/`VaultWriter` (atomic temp→rename writes, never-clobber conflict detection via the 003 `vault_writes` repo behind a `VaultWriteLog` seam); gray-matter frontmatter validated by caller zod schemas; `createVault` composition root + public barrel `index.ts`. No UI; the full vault suite (30 tests) + the `vault_writes` repo test run green against `node:fs`/`node:sqlite` temp dirs. The Tauri adapter + GUI runtime check (quickstart) are the user's `tauri dev` surface. See [specs/005-vault-layer/plan.md](specs/005-vault-layer/plan.md), `research.md`, `data-model.md`, `contracts/`, `quickstart.md`. (`001`–`005` complete.)
+<!-- SPECKIT END -->
