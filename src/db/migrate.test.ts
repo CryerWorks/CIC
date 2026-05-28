@@ -21,20 +21,21 @@ const ALL_TABLES = [
   "project_milestones",
   "project_resources",
   "vault_writes",
+  "settings", // Feature 006 (migration m0002)
 ];
 
 describe("migrate — fresh apply (FR-007 / SC-001)", () => {
-  it("takes user_version 0 → 1 and creates all 17 tables", async () => {
+  it("takes user_version 0 → 2 and creates all 18 tables", async () => {
     const db = NodeSqlExecutor.open();
 
     const before = await db.select<{ user_version: number }>("PRAGMA user_version");
     expect(before[0].user_version).toBe(0);
 
     const result = await migrate(db);
-    expect(result).toEqual({ from: 0, to: 1, applied: 1 });
+    expect(result).toEqual({ from: 0, to: 2, applied: 2 });
 
     const after = await db.select<{ user_version: number }>("PRAGMA user_version");
-    expect(after[0].user_version).toBe(1);
+    expect(after[0].user_version).toBe(2);
 
     const tables = await db.select<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",

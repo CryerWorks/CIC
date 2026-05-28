@@ -1,6 +1,7 @@
 import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { DbProvider } from "./providers/DbProvider";
+import { VaultProvider } from "./providers/VaultProvider";
 import { AppRoutes } from "./router";
 import { migrate, type SqlExecutor, type SqlValue } from "../db";
 import { NodeSqlExecutor } from "../db/adapters/node";
@@ -34,9 +35,11 @@ export function renderApp(opts: {
 } = {}) {
   return render(
     <DbProvider initialize={opts.initialize ?? makeReadyDb}>
-      <MemoryRouter initialEntries={opts.initialEntries ?? ["/"]}>
-        <AppRoutes />
-      </MemoryRouter>
+      <VaultProvider>
+        <MemoryRouter initialEntries={opts.initialEntries ?? ["/"]}>
+          <AppRoutes />
+        </MemoryRouter>
+      </VaultProvider>
     </DbProvider>,
   );
 }

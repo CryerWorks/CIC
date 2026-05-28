@@ -4,17 +4,21 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import { DbProvider } from "./app/providers/DbProvider";
+import { VaultProvider } from "./app/providers/VaultProvider";
 import { AppRoutes } from "./app/router";
 
-// DbProvider owns the SQLite store lifecycle (loading/error/ready) and wraps the router so the
-// AppShell gate can surface it. Routing is the app's entry view now (the StyleGuide moved to
-// the /style route).
+// DbProvider owns the SQLite store lifecycle (loading/error/ready). VaultProvider sits under it
+// (it reads/writes the vault path via the store) and holds the single active-vault handle for
+// the route tree (Feature 006). Both wrap the router so the AppShell gate + the Vault screen can
+// surface their state.
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <DbProvider>
-      <HashRouter>
-        <AppRoutes />
-      </HashRouter>
+      <VaultProvider>
+        <HashRouter>
+          <AppRoutes />
+        </HashRouter>
+      </VaultProvider>
     </DbProvider>
   </React.StrictMode>,
 );
