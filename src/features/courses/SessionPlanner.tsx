@@ -32,6 +32,7 @@ export function SessionPlanner({
   onCancel: () => void;
 }) {
   const [objective, setObjective] = useState("");
+  const [milestoneId, setMilestoneId] = useState("");
   const [assignments, setAssignments] = useState<DraftAssignment[]>([]);
   const [questions, setQuestions] = useState<string[]>([]);
   const [cards, setCards] = useState<{ front: string; back: string }[]>([]);
@@ -74,6 +75,7 @@ export function SessionPlanner({
     try {
       await onSubmit({
         objective: objective.trim(),
+        milestoneId: milestoneId || null,
         assignments: assignments.map((a) => ({ resourceId: a.resourceId, locator: a.locator.trim() || null, kind: a.kind })),
         pretestQuestions: questions,
         cardDrafts: cards,
@@ -93,13 +95,15 @@ export function SessionPlanner({
       <section className="flex flex-col gap-2">
         {milestones.length > 0 && (
           <label className="flex flex-col gap-1">
-            <span className="font-medium text-text">Seed from a milestone (optional)</span>
+            <span className="font-medium text-text">Milestone this session advances (optional)</span>
             <select
               aria-label="Milestone"
-              defaultValue=""
+              value={milestoneId}
               onChange={(e) => {
+                setMilestoneId(e.target.value);
+                // Convenience: seed an empty objective from the chosen Milestone's capability.
                 const m = milestones.find((x) => x.id === e.target.value);
-                if (m) setObjective(m.capability);
+                if (m && !objective.trim()) setObjective(m.capability);
               }}
               className={FIELD}
             >

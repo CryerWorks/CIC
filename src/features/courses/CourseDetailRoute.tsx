@@ -136,18 +136,35 @@ function CourseDetailView({ courseId }: { courseId: string }) {
   );
 }
 
-/** The Course's planned Daily-Loop sessions (Feature 012, US1): establish a session here, then do
- *  it from the Daily Loop. Planning persists only to SQLite — no vault note, no review card. */
+/**
+ * The Course's curriculum (Feature 012 + 013): the Course's sessions as an ordered, milestone-aware
+ * sequence. Plan a session here, sequence it with Move ↑/↓, map it to a Milestone, and watch
+ * coverage + progress — then *do* each from the Daily Loop (the order is a guide, not a gate; the
+ * loop is untouched). Planning/sequencing/mapping persist only to SQLite — no vault note, no card.
+ */
 function CourseSessions({ courseId }: { courseId: string }) {
-  const { loading, planned, resources, milestones, plan, removePlan } = useCoursePlans(courseId);
+  const { loading, sessions, resources, milestones, coverage, unassignedCount, progress, plan, removePlan, reorder, setMilestone } =
+    useCoursePlans(courseId);
   const [planning, setPlanning] = useState(false);
 
   if (loading) return null;
 
+  // A move ↑/↓ swaps two adjacent ids and rewrites the whole sequence (the repo normalizes 0..N-1).
+  const move = (index: number, dir: -1 | 1) => {
+    const target = index + dir;
+    if (target < 0 || target >= sessions.length) return;
+    const ids = sessions.map((s) => s.id);
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    void reorder(ids);
+  };
+
+  const milestoneLabel = (id: string | null) =>
+    (id && milestones.find((m) => m.id === id)?.capability) || "unassigned";
+
   return (
     <div className="mt-8">
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-text-dim">Sessions ({planned.length})</h2>
+        <h2 className="text-sm font-semibold text-text-dim">Sessions ({sessions.length})</h2>
         {!planning && <Button onClick={() => setPlanning(true)}>Plan a session</Button>}
       </div>
 
@@ -165,7 +182,7 @@ function CourseSessions({ courseId }: { courseId: string }) {
         </Panel>
       )}
 
-      {planned.length === 0 && !planning ? (
+      {sessions.length === 0 && !planning ? (
         <Panel>
           <div className="py-6 text-center">
             <p className="text-text">No sessions planned.</p>
@@ -173,28 +190,94 @@ function CourseSessions({ courseId }: { courseId: string }) {
           </div>
         </Panel>
       ) : (
-        <ul className="flex flex-col gap-2">
-          {planned.map((s) => (
-            <li key={s.id}>
-              <Panel>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-text">{s.objective ?? "(no objective)"}</p>
-                    <p className="truncate text-xs text-text-dim">
-                      Planned {s.date.slice(0, 10)} · do it from the Daily Loop
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <Tag tone="neutral">planned</Tag>
-                    <Button size="sm" variant="ghost" onClick={() => void removePlan(s.id)}>
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              </Panel>
-            </li>
-          ))}
-        </ul>
+        sessions.length > 0 && (
+          <>
+            {/* Progress (a literal count — no mastery claim) + Milestone coverage. */}
+            <p className="mb-2 text-xs font-medium text-text-dim">
+              Progress {progress.done} / {progress.total}
+            </p>
+            {milestones.length > 0 && (
+              <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-dim">
+                {coverage.map(({ milestone, count }) => (
+                  <span key={milestone.id} className="inline-flex items-center gap-1">
+                    {milestone.capability}: {count}
+                    {count === 0 && <Tag tone="warn">uncovered</Tag>}
+                  </span>
+                ))}
+                <span>unassigned: {unassignedCount}</span>
+              </div>
+            )}
+
+            <ol className="flex flex-col gap-2">
+              {sessions.map((s, i) => {
+                const name = s.objective ?? "(no objective)";
+                const completed = s.status === "completed";
+                return (
+                  <li key={s.id}>
+                    <Panel>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex min-w-0 items-start gap-2">
+                          <span className="shrink-0 text-sm tabular-nums text-text-dim">{i + 1}.</span>
+                          <div className="min-w-0">
+                            <p className="truncate text-text">{name}</p>
+                            {completed && (
+                              <p className="truncate text-xs text-text-dim">{milestoneLabel(s.milestone_id)}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {completed ? (
+                            <Tag tone="neutral">done</Tag>
+                          ) : (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                aria-label={`Move up: ${name}`}
+                                disabled={i === 0}
+                                onClick={() => move(i, -1)}
+                              >
+                                ↑
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                aria-label={`Move down: ${name}`}
+                                disabled={i === sessions.length - 1}
+                                onClick={() => move(i, 1)}
+                              >
+                                ↓
+                              </Button>
+                              {milestones.length > 0 && (
+                                <select
+                                  aria-label={`Milestone for: ${name}`}
+                                  value={s.milestone_id ?? ""}
+                                  onChange={(e) => void setMilestone(s.id, e.target.value || null)}
+                                  className="rounded-sm border border-line bg-surface-sunken px-2 py-1 text-xs text-text"
+                                >
+                                  <option value="">— none —</option>
+                                  {milestones.map((m) => (
+                                    <option key={m.id} value={m.id}>
+                                      {m.capability}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                              <Tag tone="neutral">planned</Tag>
+                              <Button size="sm" variant="ghost" onClick={() => void removePlan(s.id)}>
+                                Delete
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </Panel>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
+        )
       )}
     </div>
   );

@@ -5,15 +5,20 @@ import { migrate } from "../migrate";
 import { attachVault } from "./vaults";
 import { createDomain } from "./domains";
 import { createCourse } from "./courses";
+import { createMilestone, deleteMilestone } from "./milestones";
 import { registerResource } from "./resources";
 import { listCardsByCourse } from "./cards";
 import { listCardResources } from "./cardResources";
+import { insert } from "./query";
 import {
   planSession,
   finalizeSession,
   listPlannedSessions,
   listPlannedSessionsByCourse,
   listSessionsByVault,
+  listCourseSessions,
+  reorderCourseSessions,
+  setSessionMilestone,
   getSession,
   listSessionAssignments,
   listPretestResponses,
@@ -193,5 +198,126 @@ describe("sessions repo — finalizeSession (Feature 012, two-phase)", () => {
     await finalizeSession(db, { sessionId: done.id, minutes: 1, didRetrieval: false, writeupPath: null, pretestAnswers: [], cards: [] });
     await deletePlannedSession(db, done.id); // no-op for a completed session
     expect(await getSession(db, done.id)).not.toBeNull();
+  });
+});
+
+const plan = (db: NodeSqlExecutor, courseId: string, objective: string) =>
+  planSession(db, { courseId, objective, assignments: [], pretestQuestions: [], cardDrafts: [] });
+
+describe("sessions repo — ordering (Feature 013, US1)", () => {
+  it("planSession appends order_index = MAX+1 per Course (first → 0); separate Courses count independently", async () => {
+    const db = await freshDb();
+    const courseA = await seedCourse(db);
+    const a0 = await plan(db, courseA, "A0");
+    const a1 = await plan(db, courseA, "A1");
+    const a2 = await plan(db, courseA, "A2");
+    expect([a0.order_index, a1.order_index, a2.order_index]).toEqual([0, 1, 2]);
+
+    // A second Course's sequence starts at 0 again (course-scoped MAX).
+    const d = await createDomain(db, VID, { name: "Physics", color: "#00bfbc" });
+    const courseB = (await createCourse(db, { title: "Mechanics", domainId: d.id })).id;
+    const b0 = await plan(db, courseB, "B0");
+    expect(b0.order_index).toBe(0);
+  });
+
+  it("listCourseSessions returns ALL of a Course's sessions (planned + completed) in (order_index, date, id) order", async () => {
+    const db = await freshDb();
+    const courseId = await seedCourse(db);
+    const s0 = await plan(db, courseId, "first");
+    const s1 = await plan(db, courseId, "second");
+    await finalizeSession(db, { sessionId: s0.id, minutes: 1, didRetrieval: false, writeupPath: null, pretestAnswers: [], cards: [] });
+
+    // Completed sessions keep their place — listed alongside planned, by order_index.
+    const seq = await listCourseSessions(db, courseId);
+    expect(seq.map((s) => s.id)).toEqual([s0.id, s1.id]);
+    expect(seq.map((s) => s.status)).toEqual(["completed", "planned"]);
+  });
+
+  it("breaks an order_index tie deterministically by (date, id) — pre-feature/back-filled rows", async () => {
+    const db = await freshDb();
+    const courseId = await seedCourse(db);
+    // Two rows sharing order_index = 0 (the migration back-fill case): older date sorts first.
+    const older = {
+      id: "id-older", course_id: courseId, project_id: null, date: "2026-01-01T00:00:00.000Z",
+      objective: "older", minutes: 0, did_retrieval: 0, writeup_path: null,
+      status: "planned", completed_at: null, milestone_id: null, order_index: 0,
+    };
+    const newer = { ...older, id: "id-newer", date: "2026-02-01T00:00:00.000Z", objective: "newer" };
+    await insert(db, "sessions", newer); // insert newer first to prove sort, not insertion order
+    await insert(db, "sessions", older);
+
+    expect((await listCourseSessions(db, courseId)).map((s) => s.objective)).toEqual(["older", "newer"]);
+  });
+
+  it("reorderCourseSessions rewrites a contiguous 0..N-1 (no duplicate positions), idempotently, ignoring foreign ids", async () => {
+    const db = await freshDb();
+    const courseId = await seedCourse(db);
+    const s0 = await plan(db, courseId, "s0");
+    const s1 = await plan(db, courseId, "s1");
+    const s2 = await plan(db, courseId, "s2");
+
+    // Move s2 to the front (a move ↑↑ in the UI): caller passes the full new ordering.
+    await reorderCourseSessions(db, courseId, [s2.id, s0.id, s1.id]);
+    let seq = await listCourseSessions(db, courseId);
+    expect(seq.map((s) => s.id)).toEqual([s2.id, s0.id, s1.id]);
+    expect(seq.map((s) => s.order_index)).toEqual([0, 1, 2]); // contiguous, no dupes
+
+    // Idempotent — re-applying the same order is a no-op-equivalent rewrite.
+    await reorderCourseSessions(db, courseId, [s2.id, s0.id, s1.id]);
+    expect((await listCourseSessions(db, courseId)).map((s) => s.id)).toEqual([s2.id, s0.id, s1.id]);
+
+    // Ids not belonging to the Course are ignored (no crash, no effect on positions).
+    await reorderCourseSessions(db, courseId, [s2.id, s0.id, s1.id, "not-a-session"]);
+    seq = await listCourseSessions(db, courseId);
+    expect(seq.map((s) => s.order_index)).toEqual([0, 1, 2]);
+  });
+});
+
+describe("sessions repo — milestone mapping (Feature 013, US2)", () => {
+  it("planSession accepts an optional milestoneId; setSessionMilestone sets and clears it", async () => {
+    const db = await freshDb();
+    const courseId = await seedCourse(db);
+    const m = await createMilestone(db, { courseId, capability: "Derive the chain rule", orderIndex: 0 });
+
+    // Tagged at creation.
+    const tagged = await planSession(db, {
+      courseId, objective: "tagged", milestoneId: m.id, assignments: [], pretestQuestions: [], cardDrafts: [],
+    });
+    expect(tagged.milestone_id).toBe(m.id);
+
+    // Set then clear on an untagged session.
+    const s = await plan(db, courseId, "untagged");
+    expect(s.milestone_id).toBeNull();
+    await setSessionMilestone(db, s.id, m.id);
+    expect((await getSession(db, s.id))?.milestone_id).toBe(m.id);
+    await setSessionMilestone(db, s.id, null);
+    expect((await getSession(db, s.id))?.milestone_id).toBeNull();
+  });
+
+  it("deleting a Milestone UNMAPS its sessions (ON DELETE SET NULL) — never deletes them (FR-008/SC-007)", async () => {
+    const db = await freshDb();
+    const courseId = await seedCourse(db);
+    const m = await createMilestone(db, { courseId, capability: "Milestone A", orderIndex: 0 });
+    const s1 = await planSession(db, { courseId, objective: "s1", milestoneId: m.id, assignments: [], pretestQuestions: [], cardDrafts: [] });
+    const s2 = await planSession(db, { courseId, objective: "s2", milestoneId: m.id, assignments: [], pretestQuestions: [], cardDrafts: [] });
+
+    await deleteMilestone(db, m.id);
+
+    const seq = await listCourseSessions(db, courseId);
+    expect(seq.map((s) => s.id).sort()).toEqual([s1.id, s2.id].sort()); // both retained
+    expect(seq.every((s) => s.milestone_id === null)).toBe(true); // unmapped, not deleted
+  });
+
+  it("planning, reordering, and mapping create NO review cards (FR-013/SC-005)", async () => {
+    const db = await freshDb();
+    const courseId = await seedCourse(db);
+    const a = await plan(db, courseId, "a");
+    const b = await plan(db, courseId, "b");
+    await reorderCourseSessions(db, courseId, [b.id, a.id]);
+    const m = await createMilestone(db, { courseId, capability: "M", orderIndex: 0 });
+    await setSessionMilestone(db, a.id, m.id);
+
+    // Cards spawn only when a session is *done* (finalizeSession) — never from plan/sequence/map.
+    expect(await listCardsByCourse(db, courseId)).toHaveLength(0);
   });
 });
