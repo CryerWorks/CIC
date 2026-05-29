@@ -5,6 +5,7 @@ import { useDbState } from "../../app/providers/DbProvider";
 import { useDashboard } from "./useDashboard";
 import { MilestoneProgress } from "./MilestoneProgress";
 import { DomainAllocation } from "./DomainAllocation";
+import { OverconfidentTile } from "./OverconfidentTile";
 import { DeferredTiles } from "./DeferredTiles";
 
 /**
@@ -42,7 +43,7 @@ export function DashboardRoute() {
 }
 
 function DashboardView({ vaultReady }: { vaultReady: boolean }) {
-  const { loading, summary, courseGroups } = useDashboard();
+  const { loading, summary, courseGroups, dueCount, overconfident } = useDashboard();
 
   if (loading || !summary) return <p className="text-text-dim">Loading…</p>;
   if (summary.totals.domains === 0) return <Onboarding vaultReady={vaultReady} />;
@@ -66,6 +67,20 @@ function DashboardView({ vaultReady }: { vaultReady: boolean }) {
 
       <MilestoneProgress progress={summary.milestoneProgress} />
       <DomainAllocation allocation={summary.allocation} />
+
+      <Panel title="Retention">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <Link
+            to="/review"
+            className="rounded-md border border-line bg-surface-sunken px-3 py-2 hover:border-line-bright"
+          >
+            <span className="text-xs text-text-dim">Due for review</span>
+            <div className="mt-1 font-mono text-2xl font-bold text-text">{dueCount}</div>
+            <div className="text-[11px] text-text-dim">cards in this vault</div>
+          </Link>
+          <OverconfidentTile cards={overconfident} />
+        </div>
+      </Panel>
 
       {courseGroups.some((g) => g.courses.length > 0) && (
         <Panel title="Courses">

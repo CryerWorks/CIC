@@ -3,7 +3,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { renderApp, makeReadyDb } from "./test-support";
 import { fakeConnector, readyResult } from "./providers/vault/test-support";
-import { setSetting, attachVault, createDomain } from "../db";
+import { setSetting, attachVault, createDomain, createCourse, createCard } from "../db";
 import { VAULT_PATH_KEY } from "./providers/vault/keys";
 
 const VID = "vault-1";
@@ -47,5 +47,25 @@ describe("accessibility & keyboard (FR-014/SC-007)", () => {
 
     await user.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("makes the review grade + confidence controls labelled, keyboard-operable, and no-default", async () => {
+    const db = await readyDb(async (d) => {
+      const dom = await createDomain(d, VID, { name: "Math", color: "#8b6cef" });
+      const course = await createCourse(d, { title: "Real Analysis", domainId: dom.id });
+      await createCard(d, { courseId: course.id, front: "Q", back: "A" });
+    });
+    renderApp({ initialEntries: ["/review"], initialize: () => Promise.resolve(db), connect: connectReady });
+    const user = userEvent.setup();
+
+    await user.click(await screen.findByRole("button", { name: "Show answer" }));
+
+    const c3 = screen.getByRole("button", { name: "Confidence 3" }); // labelled for AT
+    expect(c3.getAttribute("aria-pressed")).toBe("false"); // no default selection (Constitution III)
+    expect((screen.getByRole("button", { name: "Good" }) as HTMLButtonElement).disabled).toBe(true);
+
+    await user.click(c3); // native button → keyboard-activatable
+    expect(c3.getAttribute("aria-pressed")).toBe("true");
+    expect((screen.getByRole("button", { name: "Good" }) as HTMLButtonElement).disabled).toBe(false);
   });
 });

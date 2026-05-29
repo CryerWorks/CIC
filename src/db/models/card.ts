@@ -9,6 +9,8 @@ export const CardSchema = z.object({
   course_id: z.string(),
   project_id: z.string().nullable(),
   note_path: z.string().nullable(),
+  /** Block-id of the cited paragraph within `note_path` (F3.6, migration m0004). */
+  note_block_id: z.string().nullable(),
   front: z.string(),
   back: z.string(),
   fsrs_state: jsonColumn(jsonObject).nullable(),

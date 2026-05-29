@@ -19,9 +19,9 @@ describe("routing (FR-001/FR-002/FR-004; SC-001)", () => {
     expect(await screen.findByText(/welcome to cic/i)).toBeTruthy();
   });
 
-  it("renders the Review placeholder", async () => {
+  it("renders the Review screen, gated on a connected vault (unset → guidance)", async () => {
     renderApp({ initialEntries: ["/review"] });
-    expect(await screen.findByText(/review arrives in a later feature/i)).toBeTruthy();
+    expect(await screen.findByText(/connect a vault first/i)).toBeTruthy();
   });
 
   it("gates Courses on a connected vault (unset → guidance)", async () => {

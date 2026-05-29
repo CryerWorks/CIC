@@ -14,7 +14,7 @@ import { insert } from "./repositories/query";
 describe("m0003_vaults (FR-003/FR-008)", () => {
   it("creates the vaults table, adds domains.vault_id, and the index", async () => {
     const db = NodeSqlExecutor.open();
-    const result = await migrate(db);
+    const result = await migrate(db, registered.filter((m) => m.version <= 3)); // up to m0003
     expect(result).toEqual({ from: 0, to: 3, applied: 3 });
 
     const tables = await db.select<{ name: string }>(
@@ -38,7 +38,7 @@ describe("m0003_vaults (FR-003/FR-008)", () => {
     const id = crypto.randomUUID();
     await insert(db, "domains", { id, name: "Physics", color: "#00bfbc" });
 
-    const result = await migrate(db); // full set → applies only m0003
+    const result = await migrate(db, registered.filter((m) => m.version <= 3)); // → applies only m0003
     expect(result).toEqual({ from: 2, to: 3, applied: 1 });
 
     const rows = await db.select<{ id: string; name: string; vault_id: string | null }>(
@@ -52,8 +52,9 @@ describe("m0003_vaults (FR-003/FR-008)", () => {
 
   it("is idempotent — re-running at v3 applies nothing", async () => {
     const db = NodeSqlExecutor.open();
-    await migrate(db);
-    const again = await migrate(db);
+    const upToV3 = registered.filter((m) => m.version <= 3);
+    await migrate(db, upToV3);
+    const again = await migrate(db, upToV3);
     expect(again).toEqual({ from: 3, to: 3, applied: 0 });
   });
 });

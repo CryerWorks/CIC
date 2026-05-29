@@ -26,17 +26,17 @@ const ALL_TABLES = [
 ];
 
 describe("migrate — fresh apply (FR-007 / SC-001)", () => {
-  it("takes user_version 0 → 3 and creates all 19 tables", async () => {
+  it("takes user_version 0 → 4 and creates all 19 tables", async () => {
     const db = NodeSqlExecutor.open();
 
     const before = await db.select<{ user_version: number }>("PRAGMA user_version");
     expect(before[0].user_version).toBe(0);
 
     const result = await migrate(db);
-    expect(result).toEqual({ from: 0, to: 3, applied: 3 });
+    expect(result).toEqual({ from: 0, to: 4, applied: 4 }); // + m0004 (Feature 010, additive columns)
 
     const after = await db.select<{ user_version: number }>("PRAGMA user_version");
-    expect(after[0].user_version).toBe(3);
+    expect(after[0].user_version).toBe(4);
 
     const tables = await db.select<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",

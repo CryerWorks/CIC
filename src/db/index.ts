@@ -39,3 +39,11 @@ export * from "./repositories/vaultWrites";
 
 // Feature 006: generic app-state key-value settings (e.g. the configured vault path).
 export * from "./repositories/settings";
+
+// Feature 010: SRS cards + reviews (the FSRS engine + review transaction live in src/features/srs).
+export * from "./repositories/cards";
+export * from "./repositories/reviews";
+// Feature 010: the Resource registry + card↔resource citations.
+export * from "./repositories/resources";
+export * from "./repositories/cardResources";
+export { metadataSchemaFor, type ResourceMetadata } from "./models/resourceMetadata";

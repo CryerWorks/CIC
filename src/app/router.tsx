@@ -2,7 +2,9 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { AppShell } from "./layout/AppShell";
 import { DashboardRoute } from "../features/dashboard/DashboardRoute";
 import { CoursesRoute } from "../features/courses/CoursesRoute";
-import { ReviewRoute } from "./routes/ReviewRoute";
+import { CourseDetailRoute } from "../features/courses/CourseDetailRoute";
+import { ReviewRoute } from "../features/srs/ReviewRoute";
+import { ResourcesRoute } from "../features/resources/ResourcesRoute";
 import { DomainsRoute } from "./routes/domains/DomainsRoute";
 import { VaultRoute } from "./routes/vault/VaultRoute";
 import { StyleGuide } from "../styleguide/StyleGuide";
@@ -21,7 +23,9 @@ export function AppRoutes() {
         <Route path="domains" element={<DomainsRoute />} />
         <Route path="vault" element={<VaultRoute />} />
         <Route path="courses" element={<CoursesRoute />} />
+        <Route path="courses/:courseId" element={<CourseDetailRoute />} />
         <Route path="review" element={<ReviewRoute />} />
+        <Route path="resources" element={<ResourcesRoute />} />
         <Route path="style" element={<StyleGuide />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
