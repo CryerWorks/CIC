@@ -21,6 +21,7 @@
     "fs:allow-read-dir",
     "fs:allow-mkdir",
     "fs:allow-remove",
-    "dialog:allow-open"
+    "dialog:allow-open",
+    "notification:default"
   ]
 }

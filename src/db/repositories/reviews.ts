@@ -55,6 +55,26 @@ export async function recordReview(
   });
 }
 
+/** Whether the active vault has any review recorded on `dayPrefix` (`YYYY-MM-DD`) — the Feature-014
+ *  "practiced today" suppression signal (vault-scoped via `card → course → domain`). */
+export async function hasReviewOnDay(
+  db: SqlExecutor,
+  vaultId: string,
+  dayPrefix: string,
+): Promise<boolean> {
+  const rows = await db.select<{ n: number }>(
+    `SELECT EXISTS(
+       SELECT 1 FROM reviews r
+       JOIN cards c ON c.id = r.card_id
+       JOIN courses co ON co.id = c.course_id
+       JOIN domains d ON d.id = co.domain_id
+       WHERE d.vault_id = ? AND substr(r.reviewed_at, 1, 10) = ?
+     ) AS n`,
+    [vaultId, dayPrefix],
+  );
+  return (rows[0]?.n ?? 0) === 1;
+}
+
 export async function listReviewsByCard(db: SqlExecutor, cardId: string): Promise<Review[]> {
   return selectParsed(
     db,

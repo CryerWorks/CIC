@@ -17,6 +17,8 @@ import {
   listPlannedSessionsByCourse,
   listSessionsByVault,
   listCourseSessions,
+  countPlannedSessions,
+  hasSessionCompletedOnDay,
   reorderCourseSessions,
   setSessionMilestone,
   getSession,
@@ -319,5 +321,39 @@ describe("sessions repo — milestone mapping (Feature 013, US2)", () => {
 
     // Cards spawn only when a session is *done* (finalizeSession) — never from plan/sequence/map.
     expect(await listCardsByCourse(db, courseId)).toHaveLength(0);
+  });
+});
+
+describe("sessions repo — reminder signals (Feature 014)", () => {
+  it("countPlannedSessions counts only the active vault's planned sessions", async () => {
+    const db = await freshDb();
+    const courseA = await seedCourse(db, VID);
+    await attachVault(db, { id: "vault-2", path: "/v2" });
+    const courseB = await seedCourse(db, "vault-2");
+
+    await plan(db, courseA, "a1");
+    const a2 = await plan(db, courseA, "a2");
+    await plan(db, courseB, "b1");
+    expect(await countPlannedSessions(db, VID)).toBe(2);
+
+    // Completing one drops the planned count; the other vault is unaffected.
+    await finalizeSession(db, { sessionId: a2.id, minutes: 1, didRetrieval: false, writeupPath: null, pretestAnswers: [], cards: [] });
+    expect(await countPlannedSessions(db, VID)).toBe(1);
+    expect(await countPlannedSessions(db, "vault-2")).toBe(1);
+  });
+
+  it("hasSessionCompletedOnDay is true only for a day with a completed session in the vault", async () => {
+    const db = await freshDb();
+    const courseId = await seedCourse(db);
+    const today = new Date().toISOString().slice(0, 10);
+
+    await plan(db, courseId, "planned-only");
+    expect(await hasSessionCompletedOnDay(db, VID, today)).toBe(false); // nothing completed yet
+
+    const s = await plan(db, courseId, "to finish");
+    await finalizeSession(db, { sessionId: s.id, minutes: 1, didRetrieval: false, writeupPath: null, pretestAnswers: [], cards: [] });
+    expect(await hasSessionCompletedOnDay(db, VID, today)).toBe(true);
+    expect(await hasSessionCompletedOnDay(db, VID, "2020-01-01")).toBe(false);
+    expect(await hasSessionCompletedOnDay(db, "vault-2", today)).toBe(false); // other vault
   });
 });

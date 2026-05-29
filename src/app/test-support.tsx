@@ -4,6 +4,8 @@ import { DbProvider } from "./providers/DbProvider";
 import { VaultProvider } from "./providers/VaultProvider";
 import { SourceFilesProvider } from "../features/resources/SourceFilesProvider";
 import type { SourceFiles } from "../features/resources/sourceFiles";
+import { NotifierProvider } from "../notifications/NotifierProvider";
+import type { Notifier } from "../notifications/notifier";
 import type { FolderPicker } from "./providers/vault/picker";
 import type { VaultConnector } from "./providers/vault/connect";
 import { AppRoutes } from "./router";
@@ -29,6 +31,16 @@ const noopSourceFiles: SourceFiles = {
   removeFiles: () => Promise.resolve(),
 };
 
+/** A benign default `Notifier` for tests that don't exercise notifications — permission granted,
+ *  `notify` a no-op. Tests that assert notification behavior pass their own via `notifier`. The
+ *  app-wide `ReminderScheduler` is deliberately NOT mounted here (it's tested in isolation), so it
+ *  never fires during unrelated component tests. */
+const noopNotifier: Notifier = {
+  isPermissionGranted: () => Promise.resolve(true),
+  requestPermission: () => Promise.resolve("granted"),
+  notify: () => Promise.resolve(),
+};
+
 /** Wrap an executor so `execute` rejects when the SQL matches `failOn` — to test optimistic
  *  reconcile (revert-on-failure). Reads still work. */
 export function failingOn(db: SqlExecutor, failOn: RegExp): SqlExecutor {
@@ -51,14 +63,18 @@ export function renderApp(opts: {
   picker?: FolderPicker;
   /** Test seam for Feature 011 file import; defaults to a benign no-op fake. */
   sourceFiles?: SourceFiles;
+  /** Test seam for Feature 014 notifications; defaults to a benign granted/no-op fake. */
+  notifier?: Notifier;
 } = {}) {
   return render(
     <DbProvider initialize={opts.initialize ?? makeReadyDb}>
       <VaultProvider connect={opts.connect} picker={opts.picker}>
         <SourceFilesProvider sourceFiles={opts.sourceFiles ?? noopSourceFiles}>
-          <MemoryRouter initialEntries={opts.initialEntries ?? ["/"]}>
-            <AppRoutes />
-          </MemoryRouter>
+          <NotifierProvider notifier={opts.notifier ?? noopNotifier}>
+            <MemoryRouter initialEntries={opts.initialEntries ?? ["/"]}>
+              <AppRoutes />
+            </MemoryRouter>
+          </NotifierProvider>
         </SourceFilesProvider>
       </VaultProvider>
     </DbProvider>,

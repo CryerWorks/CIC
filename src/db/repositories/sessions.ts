@@ -286,6 +286,33 @@ export function listSessionsByVault(
   return listByVault(db, vaultId, opts?.status ?? null, opts?.limit);
 }
 
+/** Count of the active vault's **planned** sessions — the Feature-014 reminder "pending work"
+ *  signal (vault-scoped transitively via `course → domain`). */
+export async function countPlannedSessions(db: SqlExecutor, vaultId: string): Promise<number> {
+  const rows = await db.select<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM sessions s ${VAULT_JOIN} WHERE d.vault_id = ? AND s.status = 'planned'`,
+    [vaultId],
+  );
+  return rows[0]?.n ?? 0;
+}
+
+/** Whether the active vault has a session **completed** on `dayPrefix` (`YYYY-MM-DD`) — the
+ *  Feature-014 "practiced today" suppression signal (vault-scoped via `course → domain`). */
+export async function hasSessionCompletedOnDay(
+  db: SqlExecutor,
+  vaultId: string,
+  dayPrefix: string,
+): Promise<boolean> {
+  const rows = await db.select<{ n: number }>(
+    `SELECT EXISTS(
+       SELECT 1 FROM sessions s ${VAULT_JOIN}
+       WHERE d.vault_id = ? AND s.status = 'completed' AND substr(s.completed_at, 1, 10) = ?
+     ) AS n`,
+    [vaultId, dayPrefix],
+  );
+  return (rows[0]?.n ?? 0) === 1;
+}
+
 /** A Course's planned sessions (the Course-detail "Sessions" section), newest first. */
 export function listPlannedSessionsByCourse(db: SqlExecutor, courseId: string): Promise<Session[]> {
   return selectParsed(

@@ -35,6 +35,10 @@ export default tseslint.config(
             { name: "@anthropic-ai/sdk", message: "Vendor AI SDKs may only be imported inside src/ai/adapters/*." },
             { name: "@tauri-apps/plugin-sql", message: "The SQL plugin may only be imported inside src/db/adapters/* — depend on the SqlExecutor seam instead." },
             { name: "@tauri-apps/plugin-fs", message: "The fs plugin may only be imported inside src/vault/adapters/* — depend on the VaultFs seam instead." },
+            // Feature 014: the notification bridge is confined the same way — ONLY inside
+            // src/notifications/adapters/* (the production Notifier adapter), so the scheduler +
+            // settings UI depend on the Notifier seam, never the plugin (Constitution IV).
+            { name: "@tauri-apps/plugin-notification", message: "The notification plugin may only be imported inside src/notifications/adapters/* — depend on the Notifier seam instead." },
             // Feature 010: the FSRS scheduling library is confined to the Scheduler seam — it
             // may be imported ONLY inside src/features/srs/fsrs/scheduler.ts, so the rest of the
             // app depends on the `Scheduler` interface, never `ts-fsrs` types (Constitution IV).
@@ -55,6 +59,11 @@ export default tseslint.config(
   },
   {
     files: ["src/vault/adapters/**/*.{ts,tsx}"],
+    rules: { "no-restricted-imports": "off" },
+  },
+  // The Notifier adapter is the one place @tauri-apps/plugin-notification may be imported (Feature 014).
+  {
+    files: ["src/notifications/adapters/**/*.{ts,tsx}"],
     rules: { "no-restricted-imports": "off" },
   },
   // The FSRS engine seam is the one place ts-fsrs may be imported (Feature 010, Constitution IV).
