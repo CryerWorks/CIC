@@ -26,6 +26,7 @@ export async function registerResource(
     filePath?: string | null;
     url?: string | null;
     metadata?: ResourceMetadata;
+    domainId?: string | null;
   },
 ): Promise<Resource> {
   const metadata = metadataSchemaFor(input.kind).parse(input.metadata ?? {});
@@ -33,6 +34,7 @@ export async function registerResource(
   await insert(db, "resources", {
     id,
     vault_id: vaultId,
+    domain_id: input.domainId ?? null,
     title: input.title,
     kind: input.kind,
     file_path: input.filePath ?? null,
@@ -52,7 +54,19 @@ export async function attachResources(db: SqlExecutor, vaultId: string): Promise
   await db.execute("UPDATE resources SET vault_id = ? WHERE vault_id IS NULL", [vaultId]);
 }
 
-export async function listResources(db: SqlExecutor, vaultId: string): Promise<Resource[]> {
+export async function listResources(
+  db: SqlExecutor,
+  vaultId: string,
+  opts?: { domainId?: string },
+): Promise<Resource[]> {
+  if (opts?.domainId) {
+    return selectParsed(
+      db,
+      ResourceSchema,
+      "SELECT * FROM resources WHERE vault_id = ? AND domain_id = ? ORDER BY title",
+      [vaultId, opts.domainId],
+    );
+  }
   return selectParsed(
     db,
     ResourceSchema,
@@ -70,6 +84,7 @@ export async function updateResource(
     filePath?: string | null;
     url?: string | null;
     metadata?: ResourceMetadata;
+    domainId?: string | null;
   },
 ): Promise<Resource> {
   const existing = await getResource(db, id);
@@ -79,6 +94,7 @@ export async function updateResource(
   if (patch.kind !== undefined) set.kind = patch.kind;
   if (patch.filePath !== undefined) set.file_path = patch.filePath;
   if (patch.url !== undefined) set.url = patch.url;
+  if (patch.domainId !== undefined) set.domain_id = patch.domainId;
   if (patch.metadata !== undefined) {
     set.metadata = metadataSchemaFor(patch.kind ?? existing.kind).parse(patch.metadata);
   }

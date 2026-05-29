@@ -9,6 +9,8 @@ export const ResourceSchema = z.object({
   id: z.string(),
   /** Owning vault (Feature 010, migration m0004) — scopes the registry per active vault. */
   vault_id: z.string().nullable(),
+  /** Optional "home Domain" (Feature 011, migration m0005) — files/filters the registry. */
+  domain_id: z.string().nullable(),
   title: z.string(),
   kind: resourceKind,
   file_path: z.string().nullable(),

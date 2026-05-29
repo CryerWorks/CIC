@@ -44,8 +44,10 @@ describe("CourseDetailRoute (US2)", () => {
     await userEvent.type(screen.getByLabelText("Back"), "epsilon-delta");
     await userEvent.click(screen.getByRole("button", { name: "Add card" }));
 
-    expect(await screen.findByText("Define a limit")).toBeTruthy();
-    expect(screen.getByText("new")).toBeTruthy();
+    // The editor stays open on the new card (so citations are reachable), so scope to the list.
+    const list = await screen.findByRole("list");
+    expect(within(list).getByText("Define a limit")).toBeTruthy();
+    expect(within(list).getByText("new")).toBeTruthy();
   });
 
   it("edits a card's content", async () => {
@@ -76,6 +78,42 @@ describe("CourseDetailRoute (US2)", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add citation" }));
 
     expect(await screen.findByText(/page=10/)).toBeTruthy();
+  });
+
+  it("offers resource linking right after creating a card (not only on edit)", async () => {
+    const { db, courseId } = await seed();
+    const res = await registerResource(db, VID, { title: "Baby Rudin", kind: "book" });
+    await linkResourceToCourse(db, { courseId, resourceId: res.id, role: "reference" });
+    renderDetail(db, courseId);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Add card" }));
+    await userEvent.type(screen.getByLabelText("Front"), "Q");
+    await userEvent.type(screen.getByLabelText("Back"), "A");
+    await userEvent.click(screen.getByRole("button", { name: "Add card" }));
+
+    // The editor stays open on the new card, so its citation picker is available immediately.
+    const select = await screen.findByLabelText("Resource");
+    await userEvent.selectOptions(select, within(select).getByRole("option", { name: "Baby Rudin" }));
+    await userEvent.type(screen.getByLabelText("Locator"), "page=12");
+    await userEvent.click(screen.getByRole("button", { name: "Add citation" }));
+
+    expect(await screen.findByText(/page=12/)).toBeTruthy();
+  });
+
+  it("labels the citation locator as a Timestamp for a web-hosted video", async () => {
+    const { db, courseId } = await seed();
+    await createCard(db, { courseId, front: "Q", back: "A" });
+    const res = await registerResource(db, VID, { title: "MIT Lecture", kind: "video_url", url: "https://youtu.be/x" });
+    await linkResourceToCourse(db, { courseId, resourceId: res.id, role: "reference" });
+    renderDetail(db, courseId);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    const select = await screen.findByLabelText("Resource");
+    expect(screen.getByLabelText("Locator")).toBeTruthy(); // page-style before a pick
+    await userEvent.selectOptions(select, within(select).getByRole("option", { name: "MIT Lecture" }));
+
+    expect(await screen.findByLabelText("Timestamp")).toBeTruthy();
+    expect(screen.queryByLabelText("Locator")).toBeNull();
   });
 
   it("deletes a card", async () => {

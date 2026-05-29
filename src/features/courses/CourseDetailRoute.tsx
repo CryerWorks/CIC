@@ -52,9 +52,15 @@ function CourseDetailView({ courseId }: { courseId: string }) {
   }
 
   const submit = async (input: CardInput) => {
-    if (editor?.mode === "edit") await editCard(editor.card.id, input);
-    else await addCard(input);
-    setEditor(null);
+    if (editor?.mode === "edit") {
+      await editCard(editor.card.id, input);
+      setEditor(null);
+    } else {
+      // Citations need a saved card id (card_resources FK), so creating a card keeps the editor open
+      // in edit mode on the new card — the citation section then appears for both create and edit.
+      const card = await addCard(input);
+      setEditor({ mode: "edit", card });
+    }
   };
 
   return (

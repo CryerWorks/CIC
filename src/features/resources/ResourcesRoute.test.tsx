@@ -10,8 +10,10 @@ import {
   createDomain,
   createCourse,
   listCourseResources,
+  listResources,
   type SqlExecutor,
 } from "../../db";
+import type { SourceFiles } from "./sourceFiles";
 import { VAULT_PATH_KEY } from "../../app/providers/vault/keys";
 
 const VID = "vault-res";
@@ -24,11 +26,12 @@ async function seed(fn?: (db: SqlExecutor) => Promise<void>): Promise<SqlExecuto
   return db;
 }
 
-function renderRes(db: SqlExecutor) {
+function renderRes(db: SqlExecutor, sourceFiles?: SourceFiles) {
   return renderApp({
     initialEntries: ["/resources"],
     initialize: () => Promise.resolve(db),
     connect: fakeConnector({ fallback: readyResult(0, VID) }),
+    sourceFiles,
   });
 }
 
@@ -45,6 +48,29 @@ describe("ResourcesRoute (US4)", () => {
 
     expect(await screen.findByText("Baby Rudin")).toBeTruthy();
     expect(screen.getByText("Book")).toBeTruthy();
+  });
+
+  it("internalizes a picked file and records its stored path (US1)", async () => {
+    const fake: SourceFiles = {
+      pickFile: () => Promise.resolve("/picked/baby-rudin.pdf"),
+      importFile: ({ resourceId, filename }) => Promise.resolve(`/store/resources/${resourceId}/${filename}`),
+      removeFiles: () => Promise.resolve(),
+    };
+    const db = await seed();
+    renderRes(db, fake);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Register resource" }));
+    await userEvent.type(screen.getByLabelText("Title"), "Baby Rudin");
+    // Kind defaults to PDF (a file-kind) → the native picker control is shown.
+    await userEvent.click(screen.getByRole("button", { name: "Choose file…" }));
+    expect(await screen.findByText(/Selected: baby-rudin\.pdf/)).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Register" }));
+
+    await waitFor(async () => {
+      const rows = await listResources(db, VID);
+      expect(rows).toHaveLength(1);
+      expect(rows[0].file_path).toMatch(/\/store\/resources\/.+\/baby-rudin\.pdf$/);
+    });
   });
 
   it("lists only the active vault's resources", async () => {
@@ -81,6 +107,29 @@ describe("ResourcesRoute (US4)", () => {
     });
   });
 
+  it("files a Resource under a Domain on edit and filters the registry by it (US4)", async () => {
+    const db = await seed(async (d) => {
+      await createDomain(d, VID, { name: "Math", color: "#8b6cef" });
+      await registerResource(d, VID, { title: "Baby Rudin", kind: "book" });
+      await registerResource(d, VID, { title: "Other Book", kind: "book" });
+    });
+    renderRes(db);
+
+    await screen.findByText("Baby Rudin");
+    // Edit the first row (alphabetical: "Baby Rudin") → set its Home domain → save.
+    await userEvent.click(screen.getAllByRole("button", { name: "Edit" })[0]);
+    await userEvent.selectOptions(await screen.findByLabelText("Home domain"), "Math");
+    await userEvent.click(screen.getByRole("button", { name: "Save resource" }));
+
+    // Filter the registry to Math → only the filed resource remains.
+    await screen.findByText("Baby Rudin");
+    await userEvent.selectOptions(screen.getByLabelText("Filter by domain"), "Math");
+    await waitFor(() => {
+      expect(screen.getByText("Baby Rudin")).toBeTruthy();
+      expect(screen.queryByText("Other Book")).toBeNull();
+    });
+  });
+
   it("deletes a resource", async () => {
     const db = await seed((d) => registerResource(d, VID, { title: "Gone", kind: "pdf" }).then(() => {}));
     renderRes(db);
@@ -88,5 +137,28 @@ describe("ResourcesRoute (US4)", () => {
     await screen.findByText("Gone");
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(screen.queryByText("Gone")).toBeNull());
+  });
+
+  it("removes the internalized file copy when a Resource is deleted (US3)", async () => {
+    let removedId = "";
+    const fake: SourceFiles = {
+      pickFile: () => Promise.resolve(null),
+      importFile: ({ resourceId, filename }) => Promise.resolve(`/store/${resourceId}/${filename}`),
+      removeFiles: (id) => {
+        removedId = id;
+        return Promise.resolve();
+      },
+    };
+    let resId = "";
+    const db = await seed(async (d) => {
+      const r = await registerResource(d, VID, { title: "Gone", kind: "pdf" });
+      resId = r.id;
+    });
+    renderRes(db, fake);
+
+    await screen.findByText("Gone");
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(screen.queryByText("Gone")).toBeNull());
+    expect(removedId).toBe(resId);
   });
 });
