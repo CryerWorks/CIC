@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resourceTarget, openCitation } from "./openTarget";
+import { resourceTarget, openCitation, isPdfFileUrl } from "./openTarget";
 import type { Resource } from "../../../db";
 import type { ResourceKind } from "../../../db";
 
@@ -7,6 +7,7 @@ function res(kind: ResourceKind, over: Partial<Resource> = {}): Resource {
   return {
     id: "r",
     vault_id: "v",
+    domain_id: null,
     title: "t",
     kind,
     file_path: null,
@@ -42,6 +43,27 @@ describe("resourceTarget (F3.7 / R8)", () => {
 
   it("a file kind without a file_path has no target", () => {
     expect(resourceTarget(res("pdf"), "10")).toBeNull();
+  });
+
+  it("other internalized file-kinds (epub/markdown/video_file/audio) open via file:// once a file is stored", () => {
+    expect(resourceTarget(res("epub", { file_path: "/lib/book.epub" }), null)).toBe("file:///lib/book.epub");
+    expect(resourceTarget(res("video_file", { file_path: "/v/clip.mp4" }), null)).toBe("file:///v/clip.mp4");
+    // still null until a file is internalized (the previously-grayed "Open"):
+    expect(resourceTarget(res("audio"), "0:30")).toBeNull();
+  });
+});
+
+describe("isPdfFileUrl (PDFs route to the browser so #page= is honored)", () => {
+  it("matches a file:// PDF, ignoring the #page / ? suffix and case", () => {
+    expect(isPdfFileUrl("file:///docs/rudin.pdf#page=10")).toBe(true);
+    expect(isPdfFileUrl("file:///C:/docs/Baby%20Rudin.PDF")).toBe(true);
+    expect(isPdfFileUrl("file:///docs/rudin.pdf?x=1")).toBe(true);
+  });
+
+  it("excludes non-PDF files and remote URLs (those keep the plain opener)", () => {
+    expect(isPdfFileUrl("file:///lib/book.epub")).toBe(false);
+    expect(isPdfFileUrl("file:///v/clip.mp4")).toBe(false);
+    expect(isPdfFileUrl("https://x.com/a.pdf#page=2")).toBe(false);
   });
 });
 

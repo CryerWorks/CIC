@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button, Callout, Tag } from "../../components/ui";
 import { useCardCitations } from "./useCardCitations";
+import { resourceTarget, openCitation } from "../srs/citations/openTarget";
 import type { Card } from "../../db";
 
 const FIELD = "w-full rounded-sm border border-line bg-surface-sunken px-3 py-2 text-sm text-text";
@@ -28,6 +29,11 @@ export function CardCitations({ card }: { card: Card }) {
     setLocator("");
   };
 
+  // Time-based media take a timestamp locator (mm:ss / seconds) rather than a page/anchor. A
+  // video_url's timestamp deep-links via `?t=`; for local video/audio it's a human reference.
+  const selectedKind = resources.find((r) => r.id === resourceId)?.kind;
+  const timed = selectedKind === "video_url" || selectedKind === "video_file" || selectedKind === "audio";
+
   const onCiteNote = async (overwrite = false) => {
     if (!card.note_path || !paragraph.trim()) return;
     const res = await citeNote(card.note_path, paragraph.trim(), overwrite);
@@ -53,17 +59,25 @@ export function CardCitations({ card }: { card: Card }) {
 
         {citations.length > 0 && (
           <ul className="flex flex-col gap-1">
-            {citations.map((c) => (
-              <li key={c.resource.id} className="flex items-center justify-between gap-2 text-sm">
-                <span className="min-w-0 truncate text-text">
-                  {c.resource.title}
-                  {c.locator && <span className="text-text-dim"> · {c.locator}</span>}
-                </span>
-                <Button size="sm" variant="ghost" onClick={() => void removeCitation(c.resource.id)}>
-                  Remove
-                </Button>
-              </li>
-            ))}
+            {citations.map((c) => {
+              const target = resourceTarget(c.resource, c.locator);
+              return (
+                <li key={c.resource.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="min-w-0 truncate text-text">
+                    {c.resource.title}
+                    {c.locator && <span className="text-text-dim"> · {c.locator}</span>}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    <Button size="sm" variant="ghost" disabled={!target} onClick={() => void openCitation(target)}>
+                      Open
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => void removeCitation(c.resource.id)}>
+                      Remove
+                    </Button>
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         )}
 
@@ -86,12 +100,12 @@ export function CardCitations({ card }: { card: Card }) {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="text-text-dim">Locator (optional)</span>
+              <span className="text-text-dim">{timed ? "Timestamp (optional)" : "Locator (optional)"}</span>
               <input
-                aria-label="Locator"
+                aria-label={timed ? "Timestamp" : "Locator"}
                 value={locator}
                 onChange={(e) => setLocator(e.target.value)}
-                placeholder="page=10"
+                placeholder={timed ? "e.g. 1:30" : "page=10"}
                 className={FIELD}
               />
             </label>

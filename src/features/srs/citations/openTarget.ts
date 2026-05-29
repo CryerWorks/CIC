@@ -52,7 +52,30 @@ function toSeconds(loc: string): string | null {
   return s.match(/\d+/)?.[0] ?? null;
 }
 
+/** True for a `file://…/x.pdf` URL (ignoring any `#page=`/`?` suffix). PDFs route through the browser
+ *  so their page fragment is honored; every other target uses the plain opener. */
+export function isPdfFileUrl(target: string): boolean {
+  if (!target.startsWith("file://")) return false;
+  return target.split(/[#?]/)[0].toLowerCase().endsWith(".pdf");
+}
+
+/**
+ * A `file://` PDF opens in the default browser (which honors `#page=N`) instead of via the OS
+ * file-association — Windows' shell-open canonicalises a `file:` URL to a plain path and drops the
+ * `#page=` fragment, so the PDF app would always land on page 1. Falls back to the plain opener if the
+ * browser launch fails, so it's never a silent no-op (the file still opens, just at page 1). Other
+ * targets (web/video URLs, non-PDF files) use the opener directly.
+ */
 async function defaultOpen(target: string): Promise<void> {
+  if (isPdfFileUrl(target)) {
+    try {
+      const { invoke } = await import("@tauri-apps/api/core");
+      await invoke("open_url_in_default_browser", { url: target });
+      return;
+    } catch {
+      // fall through to the OS file-association below
+    }
+  }
   const { openUrl } = await import("@tauri-apps/plugin-opener");
   await openUrl(target);
 }

@@ -2,9 +2,11 @@
 import { describe, it, expect } from "vitest";
 import { NodeSqlExecutor } from "../adapters/node";
 import { migrate } from "../migrate";
+import { migrations as registered } from "../migrations";
 import { attachVault } from "./vaults";
 import { createDomain } from "./domains";
 import { createCourse } from "./courses";
+import { insert } from "./query";
 import {
   registerResource,
   getResource,
@@ -87,5 +89,53 @@ describe("resources repo", () => {
     expect(await listCourseResources(db, course.id)).toHaveLength(0);
     const links = await db.select("SELECT * FROM course_resources WHERE resource_id = ?", [r.id]);
     expect(links).toHaveLength(0);
+  });
+
+  // Feature 011 — home Domain (m0005)
+  it("files a Resource under a Domain and filters the registry by it (FR-012/SC-007)", async () => {
+    const { db } = await setup();
+    const math = await createDomain(db, VID, { name: "Mathematics", color: "#8b6cef" });
+    const cs = await createDomain(db, VID, { name: "CS", color: "#00bfbc" });
+    const r1 = await registerResource(db, VID, { title: "Rudin", kind: "book", domainId: math.id });
+    await registerResource(db, VID, { title: "SICP", kind: "book", domainId: cs.id });
+    await registerResource(db, VID, { title: "Unfiled", kind: "book" });
+
+    expect((await getResource(db, r1.id))?.domain_id).toBe(math.id);
+    expect((await listResources(db, VID, { domainId: math.id })).map((r) => r.title)).toEqual(["Rudin"]);
+    expect(await listResources(db, VID)).toHaveLength(3); // unfiltered = all
+  });
+
+  it("reassigns and clears a Resource's home Domain", async () => {
+    const { db } = await setup();
+    const d = await createDomain(db, VID, { name: "Filed", color: "#8b6cef" });
+    const r = await registerResource(db, VID, { title: "X", kind: "book", domainId: d.id });
+    expect((await updateResource(db, r.id, { domainId: null })).domain_id).toBeNull();
+    expect((await updateResource(db, r.id, { domainId: d.id })).domain_id).toBe(d.id);
+  });
+
+  it("is lossless — a resource inserted before m0005 reads domain_id null", async () => {
+    const db = NodeSqlExecutor.open();
+    await migrate(db, registered.filter((m) => m.version <= 4)); // pre-feature (no domain_id yet)
+    await attachVault(db, { id: VID, path: "/v1" });
+    const rid = crypto.randomUUID();
+    await insert(db, "resources", {
+      id: rid, vault_id: VID, title: "Old", kind: "book", file_path: null, url: null,
+      metadata: {}, ingested_at: null, added_at: "2026-01-01T00:00:00.000Z",
+    });
+
+    await migrate(db); // applies m0005
+    expect((await getResource(db, rid))?.domain_id).toBeNull();
+  });
+
+  it("deleting a Domain unfiles its Resources (ON DELETE SET NULL — C1), never deletes them", async () => {
+    const { db } = await setup();
+    const d = await createDomain(db, VID, { name: "Doomed", color: "#8b6cef" });
+    const r = await registerResource(db, VID, { title: "Survivor", kind: "book", domainId: d.id });
+
+    await db.execute("DELETE FROM domains WHERE id = ?", [d.id]); // FK SET NULL fires
+
+    const after = await getResource(db, r.id);
+    expect(after).not.toBeNull();
+    expect(after?.domain_id).toBeNull();
   });
 });

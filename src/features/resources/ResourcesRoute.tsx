@@ -41,12 +41,20 @@ export function ResourcesRoute() {
 type Editor = { mode: "new" } | { mode: "edit"; resource: Resource };
 
 function toInput(r: Resource): ResourceInput {
-  return { title: r.title, kind: r.kind, filePath: r.file_path, url: r.url, metadata: r.metadata as ResourceInput["metadata"] };
+  return {
+    title: r.title,
+    kind: r.kind,
+    filePath: r.file_path,
+    url: r.url,
+    metadata: r.metadata as ResourceInput["metadata"],
+    domainId: r.domain_id,
+  };
 }
 
 function ResourcesManager() {
   const { loading, resources, courses, domains, links, add, edit, remove } = useResources();
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [filterDomainId, setFilterDomainId] = useState("");
 
   const submit = async (input: ResourceInput) => {
     if (editor?.mode === "edit") await edit(editor.resource.id, input);
@@ -54,11 +62,30 @@ function ResourcesManager() {
     setEditor(null);
   };
 
+  const visible = filterDomainId ? resources.filter((r) => r.domain_id === filterDomainId) : resources;
+
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-text">Resources</h1>
-        {editor === null && <Button onClick={() => setEditor({ mode: "new" })}>Register resource</Button>}
+        <div className="flex items-center gap-2">
+          {domains.length > 0 && (
+            <select
+              aria-label="Filter by domain"
+              value={filterDomainId}
+              onChange={(e) => setFilterDomainId(e.target.value)}
+              className="rounded-sm border border-line bg-surface-sunken px-2 py-1 text-sm text-text"
+            >
+              <option value="">All domains</option>
+              {domains.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {editor === null && <Button onClick={() => setEditor({ mode: "new" })}>Register resource</Button>}
+        </div>
       </div>
 
       {editor && (
@@ -89,9 +116,13 @@ function ResourcesManager() {
             </div>
           </div>
         </Panel>
+      ) : visible.length === 0 ? (
+        <Panel>
+          <p className="py-6 text-center text-sm text-text-dim">No resources in this domain.</p>
+        </Panel>
       ) : (
         <ul className="flex flex-col gap-2">
-          {resources.map((r) => (
+          {visible.map((r) => (
             <li key={r.id}>
               <Panel>
                 <div className="flex items-center justify-between gap-3">

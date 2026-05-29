@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "../../components/ui";
 import { RESOURCE_KIND, type ResourceKind, type Course, type Domain } from "../../db";
+import { useSourceFiles } from "./SourceFilesProvider";
+import { URL_KINDS, isFileKind, basename } from "./sourceFiles";
 import type { ResourceInput } from "./useResources";
 
 const KIND_LABEL: Record<ResourceKind, string> = {
@@ -13,8 +15,6 @@ const KIND_LABEL: Record<ResourceKind, string> = {
   book: "Book",
   audio: "Audio",
 };
-const FILE_KINDS: ResourceKind[] = ["pdf", "epub", "markdown", "video_file", "audio"];
-const URL_KINDS: ResourceKind[] = ["video_url", "web_page"];
 
 const FIELD_CLASS = "w-full rounded-sm border border-line bg-surface-sunken px-3 py-2 text-text";
 
@@ -43,10 +43,14 @@ interface ResourceFormProps {
  *  domain-grouped "add a course" dropdown + removable chips (shown in both create and edit — a
  *  Resource can back several Courses; grouping by Domain keeps the picker uncluttered). */
 export function ResourceForm({ initial, courses, domains, linkedCourseIds, submitLabel, onSubmit, onCancel }: ResourceFormProps) {
+  const sourceFiles = useSourceFiles();
   const m = initial?.metadata as Record<string, unknown> | undefined;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [kind, setKind] = useState<ResourceKind>(initial?.kind ?? "pdf");
-  const [filePath, setFilePath] = useState(initial?.filePath ?? "");
+  /** The Resource's already-stored file path (edit mode) — shown, not edited. */
+  const storedFilePath = initial?.filePath ?? null;
+  /** A newly-picked source file to internalize on submit (file-kinds). */
+  const [pickedPath, setPickedPath] = useState<string | null>(null);
   const [url, setUrl] = useState(initial?.url ?? "");
   const [author, setAuthor] = useState(str(m?.author));
   const [isbn, setIsbn] = useState(str(m?.isbn));
@@ -55,11 +59,17 @@ export function ResourceForm({ initial, courses, domains, linkedCourseIds, submi
   const [channel, setChannel] = useState(str(m?.channel));
   const [site, setSite] = useState(str(m?.site));
   const [courseIds, setCourseIds] = useState<string[]>(linkedCourseIds ?? []);
+  const [domainId, setDomainId] = useState<string>(initial?.domainId ?? "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const toggleCourse = (id: string) =>
     setCourseIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
+
+  const onPick = async () => {
+    const path = await sourceFiles.pickFile(kind);
+    if (path) setPickedPath(path);
+  };
 
   const metadata = (): Record<string, unknown> => {
     switch (kind) {
@@ -90,9 +100,13 @@ export function ResourceForm({ initial, courses, domains, linkedCourseIds, submi
       await onSubmit({
         title: title.trim(),
         kind,
-        filePath: FILE_KINDS.includes(kind) ? filePath.trim() || null : null,
+        // File-kinds: pass the existing stored path through unchanged; the new pick (if any) is
+        // internalized by the hook. URL-kinds carry no file.
+        filePath: isFileKind(kind) ? storedFilePath : null,
+        pickedFilePath: isFileKind(kind) ? pickedPath : null,
         url: URL_KINDS.includes(kind) ? url.trim() || null : null,
         metadata: metadata(),
+        domainId: domainId || null,
         linkCourseIds: courseIds,
       });
     } catch (err) {
@@ -116,7 +130,23 @@ export function ResourceForm({ initial, courses, domains, linkedCourseIds, submi
         </select>
       </label>
 
-      {FILE_KINDS.includes(kind) && <Field label="File path" value={filePath} onChange={setFilePath} />}
+      {isFileKind(kind) && (
+        <div className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-text">Source file</span>
+          {pickedPath ? (
+            <p className="text-xs text-text">Selected: {basename(pickedPath)}</p>
+          ) : storedFilePath ? (
+            <p className="text-xs text-text-dim">Stored: {basename(storedFilePath)}</p>
+          ) : (
+            <p className="text-xs text-text-dim">No file attached yet.</p>
+          )}
+          <div>
+            <Button type="button" variant="secondary" size="sm" onClick={() => void onPick()}>
+              {storedFilePath || pickedPath ? "Replace…" : "Choose file…"}
+            </Button>
+          </div>
+        </div>
+      )}
       {URL_KINDS.includes(kind) && <Field label="URL" value={url} onChange={setUrl} />}
 
       {(kind === "book" || kind === "pdf" || kind === "epub" || kind === "markdown") && (
@@ -131,6 +161,25 @@ export function ResourceForm({ initial, courses, domains, linkedCourseIds, submi
       )}
       {kind === "video_url" && <Field label="Channel" value={channel} onChange={setChannel} />}
       {kind === "web_page" && <Field label="Site" value={site} onChange={setSite} />}
+
+      {domains.length > 0 && (
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="font-medium text-text">Home domain</span>
+          <select
+            aria-label="Home domain"
+            value={domainId}
+            onChange={(e) => setDomainId(e.target.value)}
+            className={FIELD_CLASS}
+          >
+            <option value="">— none —</option>
+            {domains.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {courses.length > 0 && (
         <div className="flex flex-col gap-2 text-sm">
@@ -189,7 +238,7 @@ export function ResourceForm({ initial, courses, domains, linkedCourseIds, submi
       {error && <p className="text-sm text-danger">{error}</p>}
       <div className="flex gap-2">
         <Button type="submit" disabled={busy}>
-          {submitLabel}
+          {busy ? "Saving…" : submitLabel}
         </Button>
         <Button type="button" variant="ghost" onClick={onCancel}>
           Cancel

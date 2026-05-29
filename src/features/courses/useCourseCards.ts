@@ -44,9 +44,15 @@ export function useCourseCards(courseId: string) {
   }, [load]);
 
   const addCard = useCallback(
-    async (input: CardInput) => {
-      await createCard(db, { courseId, front: input.front, back: input.back, notePath: input.notePath ?? null });
+    async (input: CardInput): Promise<Card> => {
+      const card = await createCard(db, {
+        courseId,
+        front: input.front,
+        back: input.back,
+        notePath: input.notePath ?? null,
+      });
       await load();
+      return card;
     },
     [db, courseId, load],
   );

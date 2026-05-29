@@ -6,6 +6,7 @@ import ReactDOM from "react-dom/client";
 import { HashRouter } from "react-router-dom";
 import { DbProvider } from "./app/providers/DbProvider";
 import { VaultProvider } from "./app/providers/VaultProvider";
+import { SourceFilesProvider } from "./features/resources/SourceFilesProvider";
 import { AppRoutes } from "./app/router";
 
 // DbProvider owns the SQLite store lifecycle (loading/error/ready). VaultProvider sits under it
@@ -16,9 +17,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <DbProvider>
       <VaultProvider>
-        <HashRouter>
-          <AppRoutes />
-        </HashRouter>
+        <SourceFilesProvider>
+          <HashRouter>
+            <AppRoutes />
+          </HashRouter>
+        </SourceFilesProvider>
       </VaultProvider>
     </DbProvider>
   </React.StrictMode>,
