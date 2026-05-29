@@ -12,15 +12,14 @@ const TILES = [
   { label: "Today's protocol", note: "Daily Loop checklist" },
   { label: "Activity", note: "12-week heatmap" },
   { label: "Recent sessions", note: "study sessions" },
-  { label: "Due cards", note: "SRS review queue" },
 ] as const;
 
 export function DeferredTiles() {
   return (
-    <Panel title="Retention">
+    <Panel title="Coming in Phase 2">
       <p className="mb-3 text-sm text-text-dim">
-        Streaks, the Daily Loop, the activity heatmap, and SRS review arrive in Phase 2 — shown here
-        so the layout is ready. Nothing is tracked until you start studying.
+        Streaks, the Daily Loop, the activity heatmap, and recent sessions arrive with the rest of
+        Phase 2 — shown here so the layout is ready. Nothing is tracked until you start studying.
       </p>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {TILES.map((t) => (

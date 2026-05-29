@@ -4,9 +4,13 @@ import { useActiveVaultId } from "../../app/providers/VaultProvider";
 import {
   getDashboardSummary,
   listCourses,
+  countDueCards,
+  getNewCardCap,
+  getOverconfidentCards,
   type DashboardSummary,
   type DomainAllocation,
   type Course,
+  type Card,
 } from "../../db";
 
 /**
@@ -26,6 +30,10 @@ export interface DashboardData {
   loading: boolean;
   summary: DashboardSummary | null;
   courseGroups: DashboardCourseGroup[];
+  /** Cards due for review now, in the active vault (Feature 010). */
+  dueCount: number;
+  /** Cards whose latest review was high-confidence but failed (F3.5 calibration). */
+  overconfident: Card[];
 }
 
 export function useDashboard(): DashboardData {
@@ -33,6 +41,8 @@ export function useDashboard(): DashboardData {
   const vaultId = useActiveVaultId();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [courseGroups, setCourseGroups] = useState<DashboardCourseGroup[]>([]);
+  const [dueCount, setDueCount] = useState(0);
+  const [overconfident, setOverconfident] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,27 +50,36 @@ export function useDashboard(): DashboardData {
       // No active vault → nothing to scope to; the route shows connect-a-vault guidance.
       setSummary(null);
       setCourseGroups([]);
+      setDueCount(0);
+      setOverconfident([]);
       setLoading(false);
       return;
     }
     let active = true;
     setLoading(true);
-    Promise.all([getDashboardSummary(db, vaultId), listCourses(db, vaultId)])
-      .then(([s, courses]) => {
-        if (!active) return;
-        setSummary(s);
-        setCourseGroups(
-          s.allocation.map((domain) => ({
-            domain,
-            courses: courses.filter((c) => c.domain_id === domain.id),
-          })),
-        );
-      })
-      .finally(() => active && setLoading(false));
+    (async () => {
+      const cap = await getNewCardCap(db);
+      const [s, courses, due, over] = await Promise.all([
+        getDashboardSummary(db, vaultId),
+        listCourses(db, vaultId),
+        countDueCards(db, vaultId, new Date().toISOString(), cap),
+        getOverconfidentCards(db, vaultId),
+      ]);
+      if (!active) return;
+      setSummary(s);
+      setCourseGroups(
+        s.allocation.map((domain) => ({
+          domain,
+          courses: courses.filter((c) => c.domain_id === domain.id),
+        })),
+      );
+      setDueCount(due);
+      setOverconfident(over);
+    })().finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, [db, vaultId]);
 
-  return { loading, summary, courseGroups };
+  return { loading, summary, courseGroups, dueCount, overconfident };
 }

@@ -176,7 +176,9 @@ function CoursesManager() {
                         <li key={c.id}>
                           <Panel>
                             <div className="flex items-center justify-between gap-3">
-                              <span className="text-text">{c.title}</span>
+                              <Link to={`/courses/${c.id}`} className="text-text hover:text-brand hover:underline">
+                                {c.title}
+                              </Link>
                               <div className="flex items-center gap-2">
                                 {c.moc_path && <Tag tone="neutral">MOC</Tag>}
                                 <Button size="sm" variant="secondary" onClick={() => void openEdit(c.id)}>

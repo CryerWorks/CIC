@@ -35,6 +35,10 @@ export default tseslint.config(
             { name: "@anthropic-ai/sdk", message: "Vendor AI SDKs may only be imported inside src/ai/adapters/*." },
             { name: "@tauri-apps/plugin-sql", message: "The SQL plugin may only be imported inside src/db/adapters/* — depend on the SqlExecutor seam instead." },
             { name: "@tauri-apps/plugin-fs", message: "The fs plugin may only be imported inside src/vault/adapters/* — depend on the VaultFs seam instead." },
+            // Feature 010: the FSRS scheduling library is confined to the Scheduler seam — it
+            // may be imported ONLY inside src/features/srs/fsrs/scheduler.ts, so the rest of the
+            // app depends on the `Scheduler` interface, never `ts-fsrs` types (Constitution IV).
+            { name: "ts-fsrs", message: "ts-fsrs may only be imported inside src/features/srs/fsrs/scheduler.ts — depend on the Scheduler seam instead." },
           ],
         },
       ],
@@ -51,6 +55,11 @@ export default tseslint.config(
   },
   {
     files: ["src/vault/adapters/**/*.{ts,tsx}"],
+    rules: { "no-restricted-imports": "off" },
+  },
+  // The FSRS engine seam is the one place ts-fsrs may be imported (Feature 010, Constitution IV).
+  {
+    files: ["src/features/srs/fsrs/scheduler.ts"],
     rules: { "no-restricted-imports": "off" },
   },
 );

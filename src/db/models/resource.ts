@@ -7,6 +7,8 @@ import { jsonColumn, jsonObject } from "./_shared";
  *  is a kind-specific JSON object whose detailed shape the Resource feature validates later. */
 export const ResourceSchema = z.object({
   id: z.string(),
+  /** Owning vault (Feature 010, migration m0004) — scopes the registry per active vault. */
+  vault_id: z.string().nullable(),
   title: z.string(),
   kind: resourceKind,
   file_path: z.string().nullable(),
