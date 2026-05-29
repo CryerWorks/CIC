@@ -14,5 +14,6 @@ export const DESTINATIONS: NavDestination[] = [
   { path: "/review", label: "Review", implemented: true },
   { path: "/resources", label: "Resources", implemented: true },
   { path: "/vault", label: "Vault", implemented: true },
+  { path: "/settings", label: "Settings", implemented: true },
   { path: "/style", label: "Style guide", implemented: true },
 ];

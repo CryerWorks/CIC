@@ -6,7 +6,7 @@ import { attachVault } from "./vaults";
 import { createDomain } from "./domains";
 import { createCourse } from "./courses";
 import { createCard } from "./cards";
-import { recordReview, listReviewsByCard, getOverconfidentCards } from "./reviews";
+import { recordReview, listReviewsByCard, getOverconfidentCards, hasReviewOnDay } from "./reviews";
 import { createScheduler } from "../../features/srs/fsrs/scheduler";
 
 const VID = "vault-1";
@@ -98,5 +98,17 @@ describe("getOverconfidentCards (US3 · F3.5)", () => {
 
     expect(await getOverconfidentCards(db, VID)).toHaveLength(0);
     expect((await getOverconfidentCards(db, VID2)).map((c) => c.front)).toEqual(["v2-over"]);
+  });
+});
+
+describe("hasReviewOnDay (Feature 014 — practiced-today signal)", () => {
+  it("is true only for a day with a review in the active vault", async () => {
+    const { db, course } = await setup();
+    const card = await createCard(db, { courseId: course.id, front: "Q", back: "A" });
+    await recordReview(db, scheduler, { cardId: card.id, grade: "good", confidence: 3, now: NOW });
+
+    expect(await hasReviewOnDay(db, VID, "2026-05-28")).toBe(true); // NOW's day
+    expect(await hasReviewOnDay(db, VID, "2026-05-29")).toBe(false);
+    expect(await hasReviewOnDay(db, "vault-2", "2026-05-28")).toBe(false); // other vault
   });
 });
