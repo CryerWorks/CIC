@@ -7,9 +7,13 @@ import {
   updateResource,
   deleteResource,
   linkResourceToCourse,
+  unlinkResourceFromCourse,
+  listResourceCourseLinks,
   listCourses,
+  listDomains,
   type Resource,
   type Course,
+  type Domain,
   type ResourceKind,
   type ResourceMetadata,
 } from "../../db";
@@ -20,14 +24,16 @@ export interface ResourceInput {
   filePath?: string | null;
   url?: string | null;
   metadata?: ResourceMetadata;
-  /** Optional: link the new Resource to this Course (role "reference"). */
-  linkCourseId?: string | null;
+  /** Courses this Resource should be linked to (role "reference"). The full desired set — `edit`
+   *  diffs it against the current links to add/remove. */
+  linkCourseIds?: string[];
 }
 
 /**
- * Resource-registry screen state (Feature 010, US4). Loads the active vault's Resources + its
- * Courses (for the link dropdown), keyed on the vault so a switch re-scopes (FR-020). Register /
- * edit / delete + link-to-Course. Used only under a ready vault.
+ * Resource-registry screen state (Feature 010, US4). Loads the active vault's Resources, its
+ * Courses (for the link control), and the current Course↔Resource links, keyed on the vault so a
+ * switch re-scopes (FR-020). Register / edit / delete + manage Course links (on create *and* edit).
+ * Used only under a ready vault.
  */
 export function useResources() {
   const db = useDb();
@@ -35,13 +41,26 @@ export function useResources() {
   const vaultId = useActiveVaultId();
   const [resources, setResources] = useState<Resource[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [domains, setDomains] = useState<Domain[]>([]);
+  const [links, setLinks] = useState<Map<string, string[]>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!vaultId) return;
-    const [r, c] = await Promise.all([listResources(db, vaultId), listCourses(db, vaultId)]);
+    const [r, c, dom, l] = await Promise.all([
+      listResources(db, vaultId),
+      listCourses(db, vaultId),
+      listDomains(db, vaultId),
+      listResourceCourseLinks(db, vaultId),
+    ]);
     setResources(r);
     setCourses(c);
+    setDomains(dom);
+    const map = new Map<string, string[]>();
+    for (const { resource_id, course_id } of l) {
+      map.set(resource_id, [...(map.get(resource_id) ?? []), course_id]);
+    }
+    setLinks(map);
   }, [db, vaultId]);
 
   useEffect(() => {
@@ -64,8 +83,8 @@ export function useResources() {
         url: input.url ?? null,
         metadata: input.metadata,
       });
-      if (input.linkCourseId) {
-        await linkResourceToCourse(db, { courseId: input.linkCourseId, resourceId: r.id, role: "reference" });
+      for (const courseId of input.linkCourseIds ?? []) {
+        await linkResourceToCourse(db, { courseId, resourceId: r.id, role: "reference" });
       }
       await load();
     },
@@ -81,9 +100,18 @@ export function useResources() {
         url: input.url ?? null,
         metadata: input.metadata,
       });
+      // Reconcile Course links: link the newly-checked, unlink the newly-unchecked.
+      const current = links.get(id) ?? [];
+      const desired = input.linkCourseIds ?? [];
+      for (const courseId of desired.filter((c) => !current.includes(c))) {
+        await linkResourceToCourse(db, { courseId, resourceId: id, role: "reference" });
+      }
+      for (const courseId of current.filter((c) => !desired.includes(c))) {
+        await unlinkResourceFromCourse(db, id, courseId);
+      }
       await load();
     },
-    [db, load],
+    [db, links, load],
   );
 
   const remove = useCallback(
@@ -94,5 +122,5 @@ export function useResources() {
     [db, load],
   );
 
-  return { loading, resources, courses, add, edit, remove };
+  return { loading, resources, courses, domains, links, add, edit, remove };
 }

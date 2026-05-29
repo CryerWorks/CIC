@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "../../components/ui";
-import { RESOURCE_KIND, type ResourceKind, type Course } from "../../db";
+import { RESOURCE_KIND, type ResourceKind, type Course, type Domain } from "../../db";
 import type { ResourceInput } from "./useResources";
 
 const KIND_LABEL: Record<ResourceKind, string> = {
@@ -31,14 +31,18 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
 interface ResourceFormProps {
   initial?: ResourceInput;
   courses: Course[];
+  domains: Domain[];
+  /** Courses this Resource is currently linked to (edit mode); seeds the link control. */
+  linkedCourseIds?: string[];
   submitLabel: string;
   onSubmit: (input: ResourceInput) => Promise<void>;
   onCancel: () => void;
 }
 
-/** Register/edit a Resource with kind-appropriate metadata (R13). A link-to-Course dropdown is
- *  offered when creating. */
-export function ResourceForm({ initial, courses, submitLabel, onSubmit, onCancel }: ResourceFormProps) {
+/** Register/edit a Resource with kind-appropriate metadata (R13). Course links are managed with a
+ *  domain-grouped "add a course" dropdown + removable chips (shown in both create and edit — a
+ *  Resource can back several Courses; grouping by Domain keeps the picker uncluttered). */
+export function ResourceForm({ initial, courses, domains, linkedCourseIds, submitLabel, onSubmit, onCancel }: ResourceFormProps) {
   const m = initial?.metadata as Record<string, unknown> | undefined;
   const [title, setTitle] = useState(initial?.title ?? "");
   const [kind, setKind] = useState<ResourceKind>(initial?.kind ?? "pdf");
@@ -50,9 +54,12 @@ export function ResourceForm({ initial, courses, submitLabel, onSubmit, onCancel
   const [durationSec, setDurationSec] = useState(str(m?.durationSec));
   const [channel, setChannel] = useState(str(m?.channel));
   const [site, setSite] = useState(str(m?.site));
-  const [linkCourseId, setLinkCourseId] = useState("");
+  const [courseIds, setCourseIds] = useState<string[]>(linkedCourseIds ?? []);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const toggleCourse = (id: string) =>
+    setCourseIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]));
 
   const metadata = (): Record<string, unknown> => {
     switch (kind) {
@@ -86,7 +93,7 @@ export function ResourceForm({ initial, courses, submitLabel, onSubmit, onCancel
         filePath: FILE_KINDS.includes(kind) ? filePath.trim() || null : null,
         url: URL_KINDS.includes(kind) ? url.trim() || null : null,
         metadata: metadata(),
-        linkCourseId: linkCourseId || null,
+        linkCourseIds: courseIds,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save the resource.");
@@ -125,18 +132,58 @@ export function ResourceForm({ initial, courses, submitLabel, onSubmit, onCancel
       {kind === "video_url" && <Field label="Channel" value={channel} onChange={setChannel} />}
       {kind === "web_page" && <Field label="Site" value={site} onChange={setSite} />}
 
-      {!initial && courses.length > 0 && (
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-text">Link to course (optional)</span>
-          <select aria-label="Link to course" value={linkCourseId} onChange={(e) => setLinkCourseId(e.target.value)} className={FIELD_CLASS}>
-            <option value="">— none —</option>
-            {courses.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.title}
-              </option>
-            ))}
+      {courses.length > 0 && (
+        <div className="flex flex-col gap-2 text-sm">
+          <span className="font-medium text-text">Linked courses</span>
+          <p className="text-xs text-text-dim">Cards in a linked course can cite this resource.</p>
+
+          {courseIds.length > 0 && (
+            <ul className="flex flex-wrap gap-2">
+              {courseIds.map((id) => {
+                const c = courses.find((x) => x.id === id);
+                return (
+                  <li key={id}>
+                    <span className="inline-flex items-center gap-1 rounded-sm border border-line bg-surface-sunken px-2 py-1 text-text">
+                      {c?.title ?? id}
+                      <button
+                        type="button"
+                        aria-label={`Unlink ${c?.title ?? id}`}
+                        onClick={() => toggleCourse(id)}
+                        className="text-text-dim hover:text-text"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <select
+            aria-label="Add a course"
+            value=""
+            onChange={(e) => {
+              if (e.target.value) toggleCourse(e.target.value);
+            }}
+            className={FIELD_CLASS}
+          >
+            <option value="">+ Add a course…</option>
+            {domains.map((d) => {
+              const opts = courses.filter((c) => c.domain_id === d.id && !courseIds.includes(c.id));
+              if (opts.length === 0) return null;
+              return (
+                <optgroup key={d.id} label={d.name}>
+                  {opts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
-        </label>
+        </div>
       )}
 
       {error && <p className="text-sm text-danger">{error}</p>}

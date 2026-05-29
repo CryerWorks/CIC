@@ -1,14 +1,20 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button, Callout, Tag } from "../../components/ui";
 import { useCardCitations } from "./useCardCitations";
 import type { Card } from "../../db";
 
-const FIELD = "rounded-sm border border-line bg-surface-sunken px-2 py-1 text-sm text-text";
+const FIELD = "w-full rounded-sm border border-line bg-surface-sunken px-3 py-2 text-sm text-text";
 
-/** Citation editor for a saved card (Feature 010, US4): attach/detach Resource citations with a
- *  locator (F3.7), and cite a paragraph of the card's source note (F3.6). */
+/** Citation editor for a saved card (Feature 010, US4). Two distinct things:
+ *  - **Resource citations** (F3.7): attach a registered Resource (scoped to this card's Course)
+ *    with an optional locator (page/timestamp/anchor). These show an "Open" deep-link in Review.
+ *  - **Note paragraph** (F3.6): drop a stable block-ref marker into the card's source note. */
 export function CardCitations({ card }: { card: Card }) {
-  const { citations, resources, addCitation, removeCitation, citeNote } = useCardCitations(card.id);
+  const { citations, resources, error, addCitation, removeCitation, citeNote } = useCardCitations(
+    card.id,
+    card.course_id,
+  );
   const [resourceId, setResourceId] = useState("");
   const [locator, setLocator] = useState("");
   const [paragraph, setParagraph] = useState("");
@@ -39,62 +45,94 @@ export function CardCitations({ card }: { card: Card }) {
   };
 
   return (
-    <div className="mt-3 flex flex-col gap-3 border-t border-line pt-3">
-      <h3 className="text-sm font-semibold text-text-dim">Citations</h3>
+    <div className="mt-3 flex flex-col gap-5 border-t border-line pt-4">
+      {/* Resource citations (F3.7) */}
+      <section className="flex flex-col gap-2">
+        <h3 className="text-sm font-semibold text-text-dim">Resource citations</h3>
+        {error && <p className="text-xs text-danger">{error}</p>}
 
-      {citations.length > 0 && (
-        <ul className="flex flex-col gap-1">
-          {citations.map((c) => (
-            <li key={c.resource.id} className="flex items-center justify-between gap-2 text-sm">
-              <span className="truncate text-text">
-                {c.resource.title}
-                {c.locator && <span className="text-text-dim"> · {c.locator}</span>}
-              </span>
-              <Button size="sm" variant="ghost" onClick={() => void removeCitation(c.resource.id)}>
-                Remove
+        {citations.length > 0 && (
+          <ul className="flex flex-col gap-1">
+            {citations.map((c) => (
+              <li key={c.resource.id} className="flex items-center justify-between gap-2 text-sm">
+                <span className="min-w-0 truncate text-text">
+                  {c.resource.title}
+                  {c.locator && <span className="text-text-dim"> · {c.locator}</span>}
+                </span>
+                <Button size="sm" variant="ghost" onClick={() => void removeCitation(c.resource.id)}>
+                  Remove
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {resources.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-text-dim">Source</span>
+              <select
+                aria-label="Resource"
+                value={resourceId}
+                onChange={(e) => setResourceId(e.target.value)}
+                className={FIELD}
+              >
+                <option value="">— choose a source —</option>
+                {resources.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="text-text-dim">Locator (optional)</span>
+              <input
+                aria-label="Locator"
+                value={locator}
+                onChange={(e) => setLocator(e.target.value)}
+                placeholder="page=10"
+                className={FIELD}
+              />
+            </label>
+            <div>
+              <Button size="sm" variant="secondary" disabled={!resourceId} onClick={() => void onAdd()}>
+                Add citation
               </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-text-dim">
+            No resources are linked to this course yet.{" "}
+            <Link to="/resources" className="font-medium text-brand underline">
+              Register one
+            </Link>{" "}
+            and link it to this course to cite it here.
+          </p>
+        )}
+      </section>
 
-      {resources.length > 0 ? (
-        <div className="flex items-end gap-2">
-          <label className="flex flex-1 flex-col gap-1 text-sm">
-            <span className="text-text-dim">Resource</span>
-            <select aria-label="Resource" value={resourceId} onChange={(e) => setResourceId(e.target.value)} className={FIELD}>
-              <option value="">— choose —</option>
-              {resources.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-text-dim">Locator</span>
-            <input aria-label="Locator" value={locator} onChange={(e) => setLocator(e.target.value)} placeholder="page=10" className={FIELD} />
-          </label>
-          <Button size="sm" variant="secondary" disabled={!resourceId} onClick={() => void onAdd()}>
-            Add citation
-          </Button>
-        </div>
-      ) : (
-        <p className="text-xs text-text-dim">Register a Resource to cite it here.</p>
-      )}
-
+      {/* Note paragraph block-ref (F3.6) */}
       {card.note_path && (
-        <div className="flex flex-col gap-1">
+        <section className="flex flex-col gap-2">
+          <h3 className="text-sm font-semibold text-text-dim">Cite a note paragraph</h3>
           <label className="flex flex-col gap-1 text-sm">
-            <span className="text-text-dim">Cite a paragraph of {card.note_path}</span>
-            <input aria-label="Note paragraph" value={paragraph} onChange={(e) => setParagraph(e.target.value)} className={FIELD} />
+            <span className="text-text-dim">
+              Paste a paragraph of <span className="font-mono text-text">{card.note_path}</span> to mark
+            </span>
+            <input
+              aria-label="Note paragraph"
+              value={paragraph}
+              onChange={(e) => setParagraph(e.target.value)}
+              className={FIELD}
+            />
           </label>
-          <div>
+          <div className="flex items-center gap-2">
             <Button size="sm" variant="secondary" disabled={!paragraph.trim()} onClick={() => void onCiteNote(false)}>
               Cite paragraph
             </Button>
+            {card.note_block_id && <Tag tone="neutral">^{card.note_block_id}</Tag>}
           </div>
-          {card.note_block_id && <Tag tone="neutral">^{card.note_block_id}</Tag>}
           {noteMsg && <p className="text-xs text-text-dim">{noteMsg}</p>}
           {conflict && (
             <Callout variant="warn" title="Note changed outside the app">
@@ -108,7 +146,7 @@ export function CardCitations({ card }: { card: Card }) {
               </div>
             </Callout>
           )}
-        </div>
+        </section>
       )}
     </div>
   );
