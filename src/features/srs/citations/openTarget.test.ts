@@ -37,6 +37,14 @@ describe("resourceTarget (F3.7 / R8)", () => {
     expect(resourceTarget(res("video_url", { url: "https://yt/x" }), "00:30")).toBe("https://yt/x?t=30");
   });
 
+  it("a video range (mm:ss-mm:ss) opens at the start of the range, not the first integer", () => {
+    // "10:30-15:30" must parse the start (10m30s = 630s), not fall through to the bare "10".
+    expect(resourceTarget(res("video_url", { url: "https://yt/x" }), "10:30-15:30")).toBe("https://yt/x?t=630");
+    expect(resourceTarget(res("video_url", { url: "https://yt/x" }), "1:00:00-1:05:00")).toBe(
+      "https://yt/x?t=3600",
+    );
+  });
+
   it("a physical book has no auto-open target", () => {
     expect(resourceTarget(res("book"), "ch. 3")).toBeNull();
   });

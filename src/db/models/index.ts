@@ -7,6 +7,7 @@ export * from "./course";
 export * from "./milestone";
 export * from "./project";
 export * from "./session";
+export * from "./sessionCardDraft";
 export * from "./card";
 export * from "./review";
 export * from "./streak";

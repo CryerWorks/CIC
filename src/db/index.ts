@@ -46,4 +46,6 @@ export * from "./repositories/reviews";
 // Feature 010: the Resource registry + card↔resource citations.
 export * from "./repositories/resources";
 export * from "./repositories/cardResources";
+// Feature 012: Daily Loop sessions (sessions + assignments + pretest; tables exist since m0001).
+export * from "./repositories/sessions";
 export { metadataSchemaFor, type ResourceMetadata } from "./models/resourceMetadata";

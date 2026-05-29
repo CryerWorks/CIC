@@ -11,6 +11,7 @@ import {
   createCard,
   registerResource,
   linkResourceToCourse,
+  listPlannedSessionsByCourse,
   type SqlExecutor,
 } from "../../db";
 import { VAULT_PATH_KEY } from "../../app/providers/vault/keys";
@@ -124,5 +125,57 @@ describe("CourseDetailRoute (US2)", () => {
     await screen.findByText("ToDelete");
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
     await waitFor(() => expect(screen.queryByText("ToDelete")).toBeNull());
+  });
+});
+
+describe("CourseDetailRoute — planning sessions (US1)", () => {
+  it("plans a session (objective + assignment) that persists and appears in the Sessions list", async () => {
+    const { db, courseId } = await seed();
+    const res = await registerResource(db, VID, { title: "Baby Rudin", kind: "pdf", filePath: "/store/x.pdf" });
+    await linkResourceToCourse(db, { courseId, resourceId: res.id, role: "reference" });
+    renderDetail(db, courseId);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Plan a session" }));
+    await userEvent.type(await screen.findByLabelText("Objective"), "Master the squeeze theorem");
+    // Author one assignment through the picker (pretest/card staging are covered at the repo layer).
+    await userEvent.selectOptions(screen.getByLabelText("Assign resource"), res.id);
+    await userEvent.type(screen.getByLabelText("Assignment locator"), "page=42");
+    await userEvent.click(screen.getByRole("button", { name: "Add assignment" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Save plan" }));
+
+    // Surfaces in the list as planned…
+    expect(await screen.findByText("Master the squeeze theorem", undefined, { timeout: 4000 })).toBeTruthy();
+    expect(screen.getByText("planned")).toBeTruthy();
+    // …and persisted with its assignment.
+    await waitFor(
+      async () => {
+        const plans = await listPlannedSessionsByCourse(db, courseId);
+        expect(plans).toHaveLength(1);
+        expect(plans[0].objective).toBe("Master the squeeze theorem");
+      },
+      { timeout: 4000 },
+    );
+  });
+
+  it("blocks saving a plan with no objective", async () => {
+    const { db, courseId } = await seed();
+    renderDetail(db, courseId);
+    await userEvent.click(await screen.findByRole("button", { name: "Plan a session" }));
+    expect((screen.getByRole("button", { name: "Save plan" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("deletes a planned session", async () => {
+    const { db, courseId } = await seed();
+    renderDetail(db, courseId);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Plan a session" }));
+    await userEvent.type(await screen.findByLabelText("Objective"), "Throwaway plan");
+    await userEvent.click(screen.getByRole("button", { name: "Save plan" }));
+
+    await screen.findByText("Throwaway plan");
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(screen.queryByText("Throwaway plan")).toBeNull());
+    expect(await listPlannedSessionsByCourse(db, courseId)).toHaveLength(0);
   });
 });
