@@ -10,6 +10,7 @@ import {
   createCourse,
   createCard,
   registerResource,
+  linkResourceToCourse,
   type SqlExecutor,
 } from "../../db";
 import { VAULT_PATH_KEY } from "../../app/providers/vault/keys";
@@ -64,7 +65,8 @@ describe("CourseDetailRoute (US2)", () => {
   it("attaches a Resource citation to a card (US4)", async () => {
     const { db, courseId } = await seed();
     await createCard(db, { courseId, front: "Q", back: "A" });
-    await registerResource(db, VID, { title: "Baby Rudin", kind: "book" });
+    const res = await registerResource(db, VID, { title: "Baby Rudin", kind: "book" });
+    await linkResourceToCourse(db, { courseId, resourceId: res.id, role: "reference" });
     renderDetail(db, courseId);
 
     await userEvent.click(await screen.findByRole("button", { name: "Edit" }));

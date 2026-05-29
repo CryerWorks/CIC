@@ -45,7 +45,7 @@ function toInput(r: Resource): ResourceInput {
 }
 
 function ResourcesManager() {
-  const { loading, resources, courses, add, edit, remove } = useResources();
+  const { loading, resources, courses, domains, links, add, edit, remove } = useResources();
   const [editor, setEditor] = useState<Editor | null>(null);
 
   const submit = async (input: ResourceInput) => {
@@ -66,6 +66,8 @@ function ResourcesManager() {
           <ResourceForm
             initial={editor.mode === "edit" ? toInput(editor.resource) : undefined}
             courses={courses}
+            domains={domains}
+            linkedCourseIds={editor.mode === "edit" ? (links.get(editor.resource.id) ?? []) : []}
             submitLabel={editor.mode === "edit" ? "Save resource" : "Register"}
             onSubmit={submit}
             onCancel={() => setEditor(null)}

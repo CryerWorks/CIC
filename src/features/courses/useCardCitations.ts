@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDb } from "../../app/providers/DbProvider";
-import { useVault, useActiveVaultId } from "../../app/providers/VaultProvider";
+import { useVault } from "../../app/providers/VaultProvider";
 import {
   listCardResources,
   addCardResource,
   removeCardResource,
-  listResources,
+  listCourseResources,
   updateCardContent,
   type CardCitation,
   type Resource,
@@ -16,31 +16,34 @@ import { citeNoteParagraph, type CiteNoteResult } from "../srs/citations/blockRe
  * Citation management for one card (Feature 010, US4). Resource citations (F3.7) via
  * `card_resources`, and a block-ref into the card's source note (F3.6) written through
  * `VaultWriter`. A drift/unmanaged conflict on the note write is surfaced so the UI can offer
- * "cite anyway". Used only under a ready vault (it calls `useVault()`).
+ * "cite anyway". The Resource picker is scoped to the card's **Course** (only Resources linked to
+ * that Course are citable — less guesswork about what connects). Used only under a ready vault.
  */
-export function useCardCitations(cardId: string) {
+export function useCardCitations(cardId: string, courseId: string) {
   const db = useDb();
   const vault = useVault();
-  const vaultId = useActiveVaultId();
   const [citations, setCitations] = useState<CardCitation[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [cites, res] = await Promise.all([
-      listCardResources(db, cardId),
-      vaultId ? listResources(db, vaultId) : Promise.resolve<Resource[]>([]),
-    ]);
-    setCitations(cites);
-    setResources(res);
-  }, [db, cardId, vaultId]);
+    try {
+      const [cites, res] = await Promise.all([
+        listCardResources(db, cardId),
+        listCourseResources(db, courseId),
+      ]);
+      setCitations(cites);
+      setResources(res);
+      setError(null);
+    } catch (e) {
+      // Surface the failure instead of silently showing an empty list (a swallowed error here
+      // is exactly what made a real citation look like "no citation").
+      setError(e instanceof Error ? e.message : "Couldn't load citations.");
+    }
+  }, [db, cardId, courseId]);
 
   useEffect(() => {
-    let active = true;
-    load().catch(() => {});
-    return () => {
-      active = false;
-      void active;
-    };
+    void load();
   }, [load]);
 
   const addCitation = useCallback(
@@ -77,5 +80,5 @@ export function useCardCitations(cardId: string) {
     [db, cardId, vault],
   );
 
-  return { citations, resources, addCitation, removeCitation, citeNote };
+  return { citations, resources, error, addCitation, removeCitation, citeNote };
 }

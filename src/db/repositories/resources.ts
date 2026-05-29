@@ -128,3 +128,24 @@ export async function listCourseResources(db: SqlExecutor, courseId: string): Pr
     [courseId],
   );
 }
+
+export interface CourseResourceLink {
+  course_id: string;
+  resource_id: string;
+}
+
+/** Course↔Resource link rows for every Course in the active vault (Feature 010). Lets the registry
+ *  show and edit which Courses a Resource is attached to. Vault-scoped via course → domain. */
+export async function listResourceCourseLinks(
+  db: SqlExecutor,
+  vaultId: string,
+): Promise<CourseResourceLink[]> {
+  return db.select<CourseResourceLink>(
+    `SELECT cr.course_id, cr.resource_id
+     FROM course_resources cr
+     JOIN courses co ON co.id = cr.course_id
+     JOIN domains d ON d.id = co.domain_id
+     WHERE d.vault_id = ?`,
+    [vaultId],
+  );
+}
