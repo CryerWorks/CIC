@@ -30,12 +30,30 @@ async function columnExists(db: SqlExecutor, table: string, column: string): Pro
   return cols.some((c) => c.name === column);
 }
 
+/** SQLite's "duplicate column name: X" — raised by `ADD COLUMN` when the column already exists. */
+function isDuplicateColumnError(e: unknown): boolean {
+  return /duplicate column name/i.test(e instanceof Error ? e.message : String(e));
+}
+
 /** Apply one migration statement idempotently. `CREATE TABLE`/`CREATE INDEX` already use
- *  `IF NOT EXISTS`; the only non-idempotent DDL we emit is `ADD COLUMN`, guarded here by a
- *  column-existence check so a re-run after a partial apply is a safe no-op. */
+ *  `IF NOT EXISTS`; the only non-idempotent DDL we emit is `ADD COLUMN`. We guard it with a
+ *  `PRAGMA table_info` existence check AND swallow a "duplicate column name" error: the production
+ *  pooled adapter can partially apply a migration (no real transaction — see adapters/tauri.ts), and
+ *  `tauri-plugin-sql`'s `select` does not reliably return rows for `PRAGMA table_info`, so the
+ *  existence check alone can wrongly say "absent" and re-add an existing column. Catching the
+ *  duplicate-column error makes the re-run on the next launch self-heal regardless. */
 async function applyStatement(tx: SqlExecutor, statement: string): Promise<void> {
   const addColumn = ADD_COLUMN_RE.exec(statement);
-  if (addColumn && (await columnExists(tx, addColumn[1], addColumn[2]))) return;
+  if (addColumn) {
+    if (await columnExists(tx, addColumn[1], addColumn[2])) return;
+    try {
+      await tx.execute(statement);
+    } catch (e) {
+      if (isDuplicateColumnError(e)) return; // already added by an earlier partial apply
+      throw e;
+    }
+    return;
+  }
   await tx.execute(statement);
 }
 

@@ -5,6 +5,7 @@ import { CoursesRoute } from "../features/courses/CoursesRoute";
 import { CourseDetailRoute } from "../features/courses/CourseDetailRoute";
 import { ReviewRoute } from "../features/srs/ReviewRoute";
 import { ResourcesRoute } from "../features/resources/ResourcesRoute";
+import { LoopRoute } from "../features/loop/LoopRoute";
 import { DomainsRoute } from "./routes/domains/DomainsRoute";
 import { VaultRoute } from "./routes/vault/VaultRoute";
 import { StyleGuide } from "../styleguide/StyleGuide";
@@ -24,6 +25,7 @@ export function AppRoutes() {
         <Route path="vault" element={<VaultRoute />} />
         <Route path="courses" element={<CoursesRoute />} />
         <Route path="courses/:courseId" element={<CourseDetailRoute />} />
+        <Route path="loop" element={<LoopRoute />} />
         <Route path="review" element={<ReviewRoute />} />
         <Route path="resources" element={<ResourcesRoute />} />
         <Route path="style" element={<StyleGuide />} />

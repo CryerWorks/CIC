@@ -3,6 +3,8 @@ import { Link, Navigate, useParams } from "react-router-dom";
 import { Panel, Button, Callout, Tag } from "../../components/ui";
 import { useVaultState } from "../../app/providers/VaultProvider";
 import { useCourseCards, type CardInput } from "./useCourseCards";
+import { useCoursePlans } from "./useCoursePlans";
+import { SessionPlanner } from "./SessionPlanner";
 import { CardForm } from "./CardForm";
 import { CardCitations } from "./CardCitations";
 import type { Card } from "../../db";
@@ -119,6 +121,72 @@ function CourseDetailView({ courseId }: { courseId: string }) {
                       Edit
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => void removeCard(c.id)}>
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              </Panel>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <CourseSessions courseId={courseId} />
+    </div>
+  );
+}
+
+/** The Course's planned Daily-Loop sessions (Feature 012, US1): establish a session here, then do
+ *  it from the Daily Loop. Planning persists only to SQLite — no vault note, no review card. */
+function CourseSessions({ courseId }: { courseId: string }) {
+  const { loading, planned, resources, milestones, plan, removePlan } = useCoursePlans(courseId);
+  const [planning, setPlanning] = useState(false);
+
+  if (loading) return null;
+
+  return (
+    <div className="mt-8">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-text-dim">Sessions ({planned.length})</h2>
+        {!planning && <Button onClick={() => setPlanning(true)}>Plan a session</Button>}
+      </div>
+
+      {planning && (
+        <Panel title="Plan a session" className="mb-4">
+          <SessionPlanner
+            resources={resources}
+            milestones={milestones}
+            onSubmit={async (input) => {
+              await plan(input);
+              setPlanning(false);
+            }}
+            onCancel={() => setPlanning(false)}
+          />
+        </Panel>
+      )}
+
+      {planned.length === 0 && !planning ? (
+        <Panel>
+          <div className="py-6 text-center">
+            <p className="text-text">No sessions planned.</p>
+            <p className="mt-1 text-sm text-text-dim">Plan a session, then do it from the Daily Loop.</p>
+          </div>
+        </Panel>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {planned.map((s) => (
+            <li key={s.id}>
+              <Panel>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-text">{s.objective ?? "(no objective)"}</p>
+                    <p className="truncate text-xs text-text-dim">
+                      Planned {s.date.slice(0, 10)} · do it from the Daily Loop
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Tag tone="neutral">planned</Tag>
+                    <Button size="sm" variant="ghost" onClick={() => void removePlan(s.id)}>
                       Delete
                     </Button>
                   </div>

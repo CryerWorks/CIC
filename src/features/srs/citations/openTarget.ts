@@ -42,9 +42,10 @@ function toFileUrl(p: string): string {
   return `file://${norm.startsWith("/") ? "" : "/"}${norm}`;
 }
 
-/** A video locator → seconds: plain digits as-is, `mm:ss`/`hh:mm:ss` summed, else the first number. */
+/** A video locator → seconds: plain digits as-is, `mm:ss`/`hh:mm:ss` summed, else the first number.
+ *  A range (`10:30-15:30`) opens at its start, so only the segment before the dash is parsed. */
 function toSeconds(loc: string): string | null {
-  const s = loc.trim();
+  const s = loc.trim().split("-")[0].trim();
   if (/^\d+$/.test(s)) return s;
   if (/^\d+(:\d+)+$/.test(s)) {
     return String(s.split(":").reduce((acc, part) => acc * 60 + Number(part), 0));

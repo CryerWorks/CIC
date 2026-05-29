@@ -4,6 +4,7 @@ import { m0002Settings } from "./m0002_settings";
 import { m0003Vaults } from "./m0003_vaults";
 import { m0004SrsScoping } from "./m0004_srs_scoping";
 import { m0005ResourceDomain } from "./m0005_resource_domain";
+import { m0006SessionLifecycle } from "./m0006_session_lifecycle";
 
 /**
  * Ordered migration registry — the single linear history the runner applies. Append new
@@ -15,4 +16,5 @@ export const migrations: Migration[] = [
   m0003Vaults,
   m0004SrsScoping,
   m0005ResourceDomain,
+  m0006SessionLifecycle,
 ];
