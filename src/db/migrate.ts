@@ -18,13 +18,39 @@ function splitStatements(sql: string): string[] {
     .filter((s) => s.length > 0);
 }
 
+/** Our own controlled `ALTER TABLE <table> ADD COLUMN <column> ...` DDL. SQLite has no
+ *  `ADD COLUMN IF NOT EXISTS`, and the production (pooled) adapter cannot wrap a migration in a
+ *  real transaction (see adapters/tauri.ts), so a migration can partially apply — re-running on the
+ *  next launch must not fail with "duplicate column name". Table/column are bare identifiers from
+ *  our migrations (never user input), so interpolating them into the un-bindable PRAGMA is safe. */
+const ADD_COLUMN_RE = /^ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)\b/i;
+
+async function columnExists(db: SqlExecutor, table: string, column: string): Promise<boolean> {
+  const cols = await db.select<{ name: string }>(`PRAGMA table_info(${table})`);
+  return cols.some((c) => c.name === column);
+}
+
+/** Apply one migration statement idempotently. `CREATE TABLE`/`CREATE INDEX` already use
+ *  `IF NOT EXISTS`; the only non-idempotent DDL we emit is `ADD COLUMN`, guarded here by a
+ *  column-existence check so a re-run after a partial apply is a safe no-op. */
+async function applyStatement(tx: SqlExecutor, statement: string): Promise<void> {
+  const addColumn = ADD_COLUMN_RE.exec(statement);
+  if (addColumn && (await columnExists(tx, addColumn[1], addColumn[2]))) return;
+  await tx.execute(statement);
+}
+
 /**
  * Forward-only migration runner (contracts/migration-contract.md).
  *
  * Reads `PRAGMA user_version`; applies every registered migration with `version > current`
- * in ascending order, each inside a transaction that also bumps `user_version`; idempotent
+ * in ascending order, each inside a transaction that bumps `user_version` last; idempotent
  * when nothing is pending. Throws if the store's version exceeds the latest known migration
  * (refuse newer-than-app — an older build must not operate on a newer store).
+ *
+ * Each statement is applied idempotently (see `applyStatement`), and `user_version` is bumped
+ * only after they all succeed. The production adapter's pooled connection cannot guarantee a real
+ * transaction (see adapters/tauri.ts), so a migration may partially apply; this self-corrects on
+ * the next launch — already-applied statements become no-ops — without bricking the store.
  */
 export async function migrate(
   db: SqlExecutor,
@@ -54,7 +80,7 @@ export async function migrate(
   for (const migration of pending) {
     await db.transaction(async (tx) => {
       for (const statement of splitStatements(migration.sql)) {
-        await tx.execute(statement);
+        await applyStatement(tx, statement);
       }
       // user_version is part of the DB header and is transactional — it rolls back with the
       // migration on failure. It cannot be bound, so the trusted integer is interpolated.

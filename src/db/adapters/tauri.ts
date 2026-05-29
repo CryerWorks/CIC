@@ -26,22 +26,25 @@ export class TauriSqlExecutor implements SqlExecutor {
     return this.db.select<T[]>(sql, params);
   }
 
-  // NOTE (known limitation): tauri-plugin-sql backs SQLite with an sqlx connection *pool*,
-  // so BEGIN/COMMIT issued across separate execute() calls are not guaranteed to land on the
-  // same connection. For 003 the only transactional path at runtime is the startup migration,
-  // which runs once with no concurrent writer; the v1 DDL is also written with IF NOT EXISTS so
-  // a partial-then-retried apply is safe. The node test adapter gives true atomicity, so the
-  // rollback/lossless guarantees are verified there. Revisit (single pinned connection) when a
-  // feature needs multi-statement runtime transactions.
+  // tauri-plugin-sql backs SQLite with an sqlx connection *pool* and exposes only single-statement
+  // execute()/select() — no transaction or connection-pinning API. Each call does its own
+  // pool.acquire() (confirmed in the plugin's wrapper.rs), so BEGIN / COMMIT / ROLLBACK issued as
+  // separate execute() calls are NOT guaranteed to land on the same connection. In practice the
+  // COMMIT/ROLLBACK hits a connection with no open transaction and raises "cannot commit/rollback
+  // - no transaction is active", which both fails the operation AND masks its real outcome — this
+  // bricked startup migrations in Feature 010.
+  //
+  // So on the pooled adapter a transaction is best-effort: run `fn` directly and let each statement
+  // autocommit in sequence. Correctness without true atomicity is guaranteed by the callers:
+  //   • the migration runner is idempotent and applies `user_version` last, so a partial apply
+  //     self-heals on the next launch (see src/db/migrate.ts);
+  //   • the only runtime transaction (recordReview) is two sequential local writes — the lone
+  //     unprotected case is a process crash in the sub-millisecond gap between them, which on a
+  //     single-user local store is acceptable and recoverable.
+  // The node test adapter implements a real BEGIN/COMMIT/ROLLBACK, so the atomicity *contract*
+  // stays verified in Vitest. If a future feature needs hard runtime atomicity, add a Rust-side
+  // command that runs the batch on one pinned pool connection — the seam already isolates this.
   async transaction<T>(fn: (tx: SqlExecutor) => Promise<T>): Promise<T> {
-    await this.db.execute("BEGIN");
-    try {
-      const result = await fn(this);
-      await this.db.execute("COMMIT");
-      return result;
-    } catch (err) {
-      await this.db.execute("ROLLBACK");
-      throw err;
-    }
+    return fn(this);
   }
 }
