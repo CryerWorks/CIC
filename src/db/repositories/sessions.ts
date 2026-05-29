@@ -32,6 +32,9 @@ export interface PlanInput {
   id?: string;
   courseId: string;
   objective: string;
+  /** The Course Milestone this session advances (Feature 013, optional). Restricted to the
+   *  Course's own Milestones by the caller/UI — the column FK only guarantees a valid id. */
+  milestoneId?: string | null;
   assignments: AssignmentInput[];
   /** Pretest questions only — answers are recorded while doing the session. */
   pretestQuestions: string[];
@@ -68,25 +71,38 @@ export interface SessionListItem {
 
 /**
  * Establish a planned session and its children atomically (FR-006). Writes **nothing** to the
- * vault and creates **no** review cards — those happen on finish. Returns the planned `Session`.
+ * vault and creates **no** review cards — those happen on finish. The session is appended to the
+ * end of its Course's curriculum sequence (`order_index = MAX+1`, Feature 013 R5/FR-003) and may
+ * carry an optional `milestone_id`. Returns the planned `Session`.
  */
 export async function planSession(db: SqlExecutor, input: PlanInput): Promise<Session> {
   const id = input.id ?? crypto.randomUUID();
-  const rawSession = {
-    id,
-    course_id: input.courseId,
-    project_id: null as string | null,
-    date: new Date().toISOString(),
-    objective: input.objective,
-    minutes: 0,
-    did_retrieval: 0,
-    writeup_path: null as string | null,
-    status: "planned" as const,
-    completed_at: null as string | null,
-  };
+  const date = new Date().toISOString();
+  let orderIndex = 0;
 
   await db.transaction(async (tx) => {
-    await insert(tx, "sessions", rawSession);
+    // Append to the end of the Course's sequence, computed inside the txn so concurrent plans can't
+    // collide on a position (R5). COALESCE handles the Course's first session (MAX over 0 rows).
+    const maxRows = await tx.select<{ max_idx: number | null }>(
+      "SELECT MAX(order_index) AS max_idx FROM sessions WHERE course_id = ?",
+      [input.courseId],
+    );
+    orderIndex = (maxRows[0]?.max_idx ?? -1) + 1;
+
+    await insert(tx, "sessions", {
+      id,
+      course_id: input.courseId,
+      project_id: null,
+      date,
+      objective: input.objective,
+      minutes: 0,
+      did_retrieval: 0,
+      writeup_path: null,
+      status: "planned",
+      completed_at: null,
+      milestone_id: input.milestoneId ?? null,
+      order_index: orderIndex,
+    });
 
     for (const a of input.assignments) {
       await insert(tx, "session_assignments", {
@@ -120,7 +136,20 @@ export async function planSession(db: SqlExecutor, input: PlanInput): Promise<Se
     }
   });
 
-  return SessionSchema.parse(rawSession);
+  return SessionSchema.parse({
+    id,
+    course_id: input.courseId,
+    project_id: null,
+    date,
+    objective: input.objective,
+    minutes: 0,
+    did_retrieval: 0,
+    writeup_path: null,
+    status: "planned",
+    completed_at: null,
+    milestone_id: input.milestoneId ?? null,
+    order_index: orderIndex,
+  });
 }
 
 /**
@@ -312,4 +341,51 @@ export function listSessionCardDrafts(
  *  a completed session (FR-007). */
 export async function deletePlannedSession(db: SqlExecutor, sessionId: string): Promise<void> {
   await db.execute("DELETE FROM sessions WHERE id = ? AND status = 'planned'", [sessionId]);
+}
+
+/**
+ * ALL of a Course's sessions (planned + completed) in curriculum order (Feature 013, R2/R6). The
+ * `(order_index, date, id)` sort is deterministic even when rows share `order_index` (pre-feature
+ * back-fill or a transient tie — FR-004), so the curriculum always renders stably.
+ */
+export function listCourseSessions(db: SqlExecutor, courseId: string): Promise<Session[]> {
+  return selectParsed(
+    db,
+    SessionSchema,
+    "SELECT * FROM sessions WHERE course_id = ? ORDER BY order_index, date, id",
+    [courseId],
+  );
+}
+
+/**
+ * Rewrite the Course's sequence so `order_index` matches each id's position in `orderedIds`
+ * (0-based), in one transaction (Feature 013, R2/FR-004). Rewriting the whole course makes
+ * duplicate positions impossible by construction; the UI passes the full current ordering with the
+ * moved item shifted by one (a move ↑/↓). Each UPDATE is scoped to `course_id`, so ids not
+ * belonging to the Course are no-ops. Idempotent.
+ */
+export async function reorderCourseSessions(
+  db: SqlExecutor,
+  courseId: string,
+  orderedIds: string[],
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    for (let position = 0; position < orderedIds.length; position++) {
+      await tx.execute("UPDATE sessions SET order_index = ? WHERE id = ? AND course_id = ?", [
+        position,
+        orderedIds[position],
+        courseId,
+      ]);
+    }
+  });
+}
+
+/** Set or clear (null) a session's Milestone association (Feature 013, FR-006/FR-007). Same-course
+ *  membership is enforced by the UI/hook (FR-010); the FK only guarantees a valid milestone id. */
+export async function setSessionMilestone(
+  db: SqlExecutor,
+  sessionId: string,
+  milestoneId: string | null,
+): Promise<void> {
+  await update(db, "sessions", { milestone_id: milestoneId }, { id: sessionId });
 }

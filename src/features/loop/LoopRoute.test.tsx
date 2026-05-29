@@ -10,6 +10,7 @@ import {
   createCourse,
   registerResource,
   planSession,
+  reorderCourseSessions,
   listCardsByCourse,
   listCardResources,
   listPlannedSessions,
@@ -150,5 +151,23 @@ describe("LoopRoute — doing a planned session (US2)", () => {
     renderLoop(db, fakeVault(ok));
     expect(await screen.findByText(/Nothing planned yet/i)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Start" })).toBeNull();
+  });
+
+  // Feature 013: the curriculum order is a guide, not a gate (FR-005/SC-004, Constitution III).
+  it("lists and lets you start ANY planned session regardless of curriculum order_index", async () => {
+    const { db, courseId } = await seed();
+    const s1 = await planSession(db, { courseId, objective: "Sequence step 1", assignments: [], pretestQuestions: [], cardDrafts: [] });
+    const s2 = await planSession(db, { courseId, objective: "Sequence step 2", assignments: [], pretestQuestions: [], cardDrafts: [] });
+    const s3 = await planSession(db, { courseId, objective: "Sequence step 3", assignments: [], pretestQuestions: [], cardDrafts: [] });
+    // Give the curriculum a non-sequential order (step 3 first); the loop must NOT mirror or gate on it.
+    await reorderCourseSessions(db, courseId, [s3.id, s1.id, s2.id]);
+
+    renderLoop(db, fakeVault(ok));
+
+    // All three are present and each is independently startable — none hidden or locked by sequence.
+    expect(await screen.findByText("Sequence step 1")).toBeTruthy();
+    expect(screen.getByText("Sequence step 2")).toBeTruthy();
+    expect(screen.getByText("Sequence step 3")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Start" })).toHaveLength(3);
   });
 });
