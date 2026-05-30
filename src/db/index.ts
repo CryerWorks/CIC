@@ -48,4 +48,7 @@ export * from "./repositories/resources";
 export * from "./repositories/cardResources";
 // Feature 012: Daily Loop sessions (sessions + assignments + pretest; tables exist since m0001).
 export * from "./repositories/sessions";
+// Feature 015: Projects (applied practice) — projects + project_milestones/_resources (m0001),
+// title column added in m0008.
+export * from "./repositories/projects";
 export { metadataSchemaFor, type ResourceMetadata } from "./models/resourceMetadata";

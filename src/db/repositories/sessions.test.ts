@@ -7,6 +7,7 @@ import { createDomain } from "./domains";
 import { createCourse } from "./courses";
 import { createMilestone, deleteMilestone } from "./milestones";
 import { registerResource } from "./resources";
+import { createProject, getProject } from "./projects";
 import { listCardsByCourse } from "./cards";
 import { listCardResources } from "./cardResources";
 import { insert } from "./query";
@@ -21,6 +22,7 @@ import {
   hasSessionCompletedOnDay,
   reorderCourseSessions,
   setSessionMilestone,
+  listSessionsForProject,
   getSession,
   listSessionAssignments,
   listPretestResponses,
@@ -355,5 +357,33 @@ describe("sessions repo — reminder signals (Feature 014)", () => {
     expect(await hasSessionCompletedOnDay(db, VID, today)).toBe(true);
     expect(await hasSessionCompletedOnDay(db, VID, "2020-01-01")).toBe(false);
     expect(await hasSessionCompletedOnDay(db, "vault-2", today)).toBe(false); // other vault
+  });
+});
+
+describe("sessions repo — Project work block (Feature 015, FR-009/FR-010)", () => {
+  it("planning a session against an open Project links it and flips it to in-progress", async () => {
+    const db = await freshDb();
+    const courseId = await seedCourse(db);
+    const m = await createMilestone(db, { courseId, capability: "Diagonalize", orderIndex: 0 });
+    const project = await createProject(db, {
+      courseId,
+      title: "Diagonalize a 3×3",
+      capability: "I can diagonalize unaided.",
+      milestoneIds: [m.id],
+    });
+    expect(project.status).toBe("open");
+
+    const session = await planSession(db, {
+      courseId,
+      objective: "Work the project",
+      projectId: project.id,
+      assignments: [],
+      pretestQuestions: [],
+      cardDrafts: [],
+    });
+
+    expect(session.project_id).toBe(project.id);
+    expect((await getProject(db, project.id))?.status).toBe("in-progress");
+    expect((await listSessionsForProject(db, project.id)).map((s) => s.id)).toEqual([session.id]);
   });
 });

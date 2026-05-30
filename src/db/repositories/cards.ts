@@ -24,12 +24,12 @@ export async function getNewCardCap(db: SqlExecutor): Promise<number> {
 
 export async function createCard(
   db: SqlExecutor,
-  input: { courseId: string; front: string; back: string; notePath?: string | null },
+  input: { courseId: string; front: string; back: string; notePath?: string | null; projectId?: string | null },
 ): Promise<Card> {
   const row: Card = {
     id: crypto.randomUUID(),
     course_id: input.courseId,
-    project_id: null,
+    project_id: input.projectId ?? null,
     note_path: input.notePath ?? null,
     note_block_id: null,
     front: input.front,

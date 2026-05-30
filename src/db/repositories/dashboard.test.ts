@@ -6,6 +6,7 @@ import { attachVault } from "./vaults";
 import { createDomain } from "./domains";
 import { createCourse } from "./courses";
 import { createMilestone } from "./milestones";
+import { createProject, markProjectInProgress, closeProject } from "./projects";
 import { getDashboardSummary } from "./dashboard";
 import type { MilestoneStatus } from "../models/enums";
 
@@ -94,5 +95,29 @@ describe("getDashboardSummary — allocation (US2 · FR-003)", () => {
 
     expect(s.allocation.reduce((n, a) => n + a.courseCount, 0)).toBe(s.totals.courses);
     expect(s.allocation.reduce((n, a) => n + a.milestoneCount, 0)).toBe(s.totals.milestones);
+  });
+});
+
+describe("getDashboardSummary — active projects (Feature 015)", () => {
+  it("surfaces only open/in-progress Projects with their Domain, and nothing when none", async () => {
+    const db = await freshDb();
+    const math = await createDomain(db, VID, { name: "Math", color: "#8b6cef" });
+    const course = await seedCourse(db, math.id, "Linear Algebra", ["todo"]);
+    const m = await createMilestone(db, { courseId: course.id, capability: "x", orderIndex: 9 });
+
+    expect((await getDashboardSummary(db, VID)).activeProjects).toEqual([]);
+
+    const open = await createProject(db, { courseId: course.id, title: "Open one", capability: "c", milestoneIds: [m.id] });
+    const prog = await createProject(db, { courseId: course.id, title: "In progress", capability: "c", milestoneIds: [m.id] });
+    await markProjectInProgress(db, prog.id);
+    const done = await createProject(db, { courseId: course.id, title: "Done", capability: "c", milestoneIds: [m.id] });
+    await closeProject(db, { projectId: done.id, outcome: "complete" });
+
+    const s = await getDashboardSummary(db, VID);
+    expect(s.activeProjects.map((p) => p.id).sort()).toEqual([open.id, prog.id].sort());
+    expect(s.activeProjects.every((p) => p.domainId === math.id)).toBe(true);
+    expect(s.activeProjects.find((p) => p.id === open.id)?.courseId).toBe(course.id);
+
+    expect(await getDashboardSummary(db, "other-vault").then((x) => x.activeProjects)).toEqual([]);
   });
 });

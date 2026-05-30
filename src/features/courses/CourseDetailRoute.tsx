@@ -7,6 +7,7 @@ import { useCoursePlans } from "./useCoursePlans";
 import { SessionPlanner } from "./SessionPlanner";
 import { CardForm } from "./CardForm";
 import { CardCitations } from "./CardCitations";
+import { ProjectsSection } from "../projects/ProjectsSection";
 import type { Card } from "../../db";
 
 /** A Course's detail screen (Feature 010, US2): its cards, plus authoring. Gated on a connected
@@ -132,6 +133,8 @@ function CourseDetailView({ courseId }: { courseId: string }) {
       )}
 
       <CourseSessions courseId={courseId} />
+
+      <ProjectsSection courseId={courseId} />
     </div>
   );
 }
@@ -143,7 +146,7 @@ function CourseDetailView({ courseId }: { courseId: string }) {
  * loop is untouched). Planning/sequencing/mapping persist only to SQLite — no vault note, no card.
  */
 function CourseSessions({ courseId }: { courseId: string }) {
-  const { loading, sessions, resources, milestones, coverage, unassignedCount, progress, plan, removePlan, reorder, setMilestone } =
+  const { loading, sessions, resources, milestones, projects, coverage, unassignedCount, progress, plan, removePlan, reorder, setMilestone } =
     useCoursePlans(courseId);
   const [planning, setPlanning] = useState(false);
 
@@ -173,6 +176,7 @@ function CourseSessions({ courseId }: { courseId: string }) {
           <SessionPlanner
             resources={resources}
             milestones={milestones}
+            projects={projects}
             onSubmit={async (input) => {
               await plan(input);
               setPlanning(false);
