@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "../../components/ui";
-import { ASSIGNMENT_KIND, type AssignmentKind, type Resource, type Milestone } from "../../db";
+import { ASSIGNMENT_KIND, type AssignmentKind, type Resource, type Milestone, type Project } from "../../db";
 import type { PlanFormInput } from "./useCoursePlans";
 
 const FIELD = "w-full rounded-sm border border-line bg-surface-sunken px-3 py-2 text-text";
@@ -23,16 +23,19 @@ interface DraftAssignment {
 export function SessionPlanner({
   resources,
   milestones,
+  projects = [],
   onSubmit,
   onCancel,
 }: {
   resources: Resource[];
   milestones: Milestone[];
+  projects?: Project[];
   onSubmit: (input: PlanFormInput) => Promise<void>;
   onCancel: () => void;
 }) {
   const [objective, setObjective] = useState("");
   const [milestoneId, setMilestoneId] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [assignments, setAssignments] = useState<DraftAssignment[]>([]);
   const [questions, setQuestions] = useState<string[]>([]);
   const [cards, setCards] = useState<{ front: string; back: string }[]>([]);
@@ -76,6 +79,7 @@ export function SessionPlanner({
       await onSubmit({
         objective: objective.trim(),
         milestoneId: milestoneId || null,
+        projectId: projectId || null,
         assignments: assignments.map((a) => ({ resourceId: a.resourceId, locator: a.locator.trim() || null, kind: a.kind })),
         pretestQuestions: questions,
         cardDrafts: cards,
@@ -113,6 +117,21 @@ export function SessionPlanner({
                   {m.capability}
                 </option>
               ))}
+            </select>
+          </label>
+        )}
+        {projects.filter((p) => p.status === "open" || p.status === "in-progress").length > 0 && (
+          <label className="flex flex-col gap-1">
+            <span className="font-medium text-text">Work block for project (optional)</span>
+            <select aria-label="Project" value={projectId} onChange={(e) => setProjectId(e.target.value)} className={FIELD}>
+              <option value="">— none —</option>
+              {projects
+                .filter((p) => p.status === "open" || p.status === "in-progress")
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
             </select>
           </label>
         )}

@@ -116,6 +116,37 @@ function DashboardView({ vaultReady }: { vaultReady: boolean }) {
         </Panel>
       )}
 
+      {summary.activeProjects.length > 0 && (
+        <Panel title="Active projects">
+          <div className="flex flex-col gap-4">
+            {summary.allocation
+              .map((d) => ({ domain: d, projects: summary.activeProjects.filter((p) => p.domainId === d.id) }))
+              .filter((g) => g.projects.length > 0)
+              .map((g) => (
+                <section key={g.domain.id} className="flex flex-col gap-2">
+                  <h2 className="flex items-center gap-2 text-sm font-semibold text-text-dim">
+                    <span aria-hidden className="h-3 w-3 rounded-full" style={{ backgroundColor: g.domain.color }} />
+                    {g.domain.name}
+                  </h2>
+                  <ul className="flex flex-col gap-1.5">
+                    {g.projects.map((p) => (
+                      <li key={p.id}>
+                        <Link
+                          to={`/courses/${p.courseId}`}
+                          className="flex items-center justify-between rounded-md border border-line bg-panel px-3 py-2 hover:border-line-bright"
+                        >
+                          <span className="text-text">{p.title}</span>
+                          <Tag tone="neutral">project</Tag>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+          </div>
+        </Panel>
+      )}
+
       <DeferredTiles />
     </>
   );

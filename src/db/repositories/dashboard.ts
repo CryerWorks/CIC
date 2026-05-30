@@ -35,11 +35,23 @@ export interface DomainAllocation {
   milestoneCount: number;
 }
 
+/** An active (open/in-progress) Project surfaced on the dashboard (Feature 015). Flat with its
+ *  Domain id so the view can group by Domain; carries `courseId` to link into the Course detail. */
+export interface ActiveProjectTile {
+  id: string;
+  title: string;
+  courseId: string;
+  domainId: string;
+}
+
 export interface DashboardSummary {
   totals: DashboardTotals;
   milestoneProgress: MilestoneProgress;
   /** One row per Domain, ordered by name. Domains with zero Courses are included. */
   allocation: DomainAllocation[];
+  /** Active Projects in the active vault (Feature 015), newest first. Empty when there are none —
+   *  the view renders nothing fabricated (Constitution III). */
+  activeProjects: ActiveProjectTile[];
 }
 
 const TotalsRow = z.object({
@@ -59,6 +71,13 @@ const AllocationRow = z.object({
   color: z.string(),
   course_count: z.number().int().nonnegative(),
   milestone_count: z.number().int().nonnegative(),
+});
+
+const ActiveProjectRow = z.object({
+  id: z.string(),
+  title: z.string(),
+  course_id: z.string(),
+  domain_id: z.string(),
 });
 
 /** Aggregate the dashboard summary for the active vault (Feature 009 — scoped to the vault's
@@ -125,5 +144,23 @@ export async function getDashboardSummary(
     milestoneCount: r.milestone_count,
   }));
 
-  return { totals, milestoneProgress, allocation };
+  const activeProjectRows = await selectParsed(
+    db,
+    ActiveProjectRow,
+    `SELECT p.id, p.title, p.course_id AS course_id, c.domain_id AS domain_id
+     FROM projects p
+     JOIN courses c ON c.id = p.course_id
+     JOIN domains d ON d.id = c.domain_id
+     WHERE d.vault_id = ? AND p.status IN ('open', 'in-progress')
+     ORDER BY p.opened_at DESC, p.id`,
+    [vaultId],
+  );
+  const activeProjects: ActiveProjectTile[] = activeProjectRows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    courseId: r.course_id,
+    domainId: r.domain_id,
+  }));
+
+  return { totals, milestoneProgress, allocation, activeProjects };
 }

@@ -35,6 +35,9 @@ export interface PlanInput {
   /** The Course Milestone this session advances (Feature 013, optional). Restricted to the
    *  Course's own Milestones by the caller/UI — the column FK only guarantees a valid id. */
   milestoneId?: string | null;
+  /** The Project this session is a work block for (Feature 015, optional). Planning against an
+   *  `open` Project flips it to `in-progress` (FR-009/FR-010). */
+  projectId?: string | null;
   assignments: AssignmentInput[];
   /** Pretest questions only — answers are recorded while doing the session. */
   pretestQuestions: string[];
@@ -92,7 +95,7 @@ export async function planSession(db: SqlExecutor, input: PlanInput): Promise<Se
     await insert(tx, "sessions", {
       id,
       course_id: input.courseId,
-      project_id: null,
+      project_id: input.projectId ?? null,
       date,
       objective: input.objective,
       minutes: 0,
@@ -103,6 +106,15 @@ export async function planSession(db: SqlExecutor, input: PlanInput): Promise<Se
       milestone_id: input.milestoneId ?? null,
       order_index: orderIndex,
     });
+
+    // Planning a session against a Project "touches" it → open becomes in-progress (FR-009/FR-010).
+    // Idempotent + scoped to 'open', so an in-progress/closed Project is untouched. Inline (not a
+    // cross-repo call) to keep it inside this transaction.
+    if (input.projectId) {
+      await tx.execute("UPDATE projects SET status = 'in-progress' WHERE id = ? AND status = 'open'", [
+        input.projectId,
+      ]);
+    }
 
     for (const a of input.assignments) {
       await insert(tx, "session_assignments", {
@@ -139,7 +151,7 @@ export async function planSession(db: SqlExecutor, input: PlanInput): Promise<Se
   return SessionSchema.parse({
     id,
     course_id: input.courseId,
-    project_id: null,
+    project_id: input.projectId ?? null,
     date,
     objective: input.objective,
     minutes: 0,
@@ -150,6 +162,16 @@ export async function planSession(db: SqlExecutor, input: PlanInput): Promise<Se
     milestone_id: input.milestoneId ?? null,
     order_index: orderIndex,
   });
+}
+
+/** A Project's sessions (work blocks), newest first — the "touched" signal for status display. */
+export function listSessionsForProject(db: SqlExecutor, projectId: string): Promise<Session[]> {
+  return selectParsed(
+    db,
+    SessionSchema,
+    "SELECT * FROM sessions WHERE project_id = ? ORDER BY date DESC",
+    [projectId],
+  );
 }
 
 /**

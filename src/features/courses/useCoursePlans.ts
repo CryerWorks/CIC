@@ -5,6 +5,7 @@ import {
   listCourseSessions,
   listResources,
   listMilestonesByCourse,
+  listCourseProjects,
   planSession,
   deletePlannedSession,
   reorderCourseSessions,
@@ -12,6 +13,7 @@ import {
   type Session,
   type Resource,
   type Milestone,
+  type Project,
   type AssignmentKind,
 } from "../../db";
 
@@ -19,6 +21,8 @@ export interface PlanFormInput {
   objective: string;
   /** The Course Milestone this session advances (Feature 013, optional). */
   milestoneId?: string | null;
+  /** The Project this session is a work block for (Feature 015, optional). */
+  projectId?: string | null;
   assignments: { resourceId: string; locator: string | null; kind: AssignmentKind }[];
   pretestQuestions: string[];
   cardDrafts: { front: string; back: string }[];
@@ -43,17 +47,20 @@ export function useCoursePlans(courseId: string) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [resources, setResources] = useState<Resource[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const [s, rs, ms] = await Promise.all([
+    const [s, rs, ms, ps] = await Promise.all([
       listCourseSessions(db, courseId),
       listResources(db, vaultId),
       listMilestonesByCourse(db, courseId),
+      listCourseProjects(db, courseId),
     ]);
     setSessions(s);
     setResources(rs);
     setMilestones(ms);
+    setProjects(ps);
   }, [db, courseId, vaultId]);
 
   useEffect(() => {
@@ -123,6 +130,7 @@ export function useCoursePlans(courseId: string) {
     sessions,
     resources,
     milestones,
+    projects,
     coverage,
     unassignedCount,
     progress,
