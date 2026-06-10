@@ -2,6 +2,7 @@ import { render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { DbProvider } from "./providers/DbProvider";
 import { VaultProvider } from "./providers/VaultProvider";
+import { AIProvider } from "./providers/AIProvider";
 import { SourceFilesProvider } from "../features/resources/SourceFilesProvider";
 import type { SourceFiles } from "../features/resources/sourceFiles";
 import { NotifierProvider } from "../notifications/NotifierProvider";
@@ -11,6 +12,8 @@ import type { VaultConnector } from "./providers/vault/connect";
 import { AppRoutes } from "./router";
 import { migrate, type SqlExecutor, type SqlValue } from "../db";
 import { NodeSqlExecutor } from "../db/adapters/node";
+import { InMemorySecretStore, type SecretStore } from "../ai/secrets";
+import { createProvider } from "../ai/adapters";
 
 // Test support (not a test file). Renders the real route tree under a MemoryRouter wrapped in a
 // DbProvider, with an injected in-memory node:sqlite executor — so UI tests exercise real
@@ -65,18 +68,28 @@ export function renderApp(opts: {
   sourceFiles?: SourceFiles;
   /** Test seam for Feature 014 notifications; defaults to a benign granted/no-op fake. */
   notifier?: Notifier;
+  /** Test seams for Feature 016 AI layer. Defaults are network-free in-memory: the
+   *  `InMemorySecretStore` (no OS keychain) + the real `createProvider` (will never be invoked
+   *  unless a test seeds a config — the AI section is the only route that mounts AI consumers). */
+  secretStore?: SecretStore;
+  createProviderFn?: typeof createProvider;
 } = {}) {
   return render(
     <DbProvider initialize={opts.initialize ?? makeReadyDb}>
-      <VaultProvider connect={opts.connect} picker={opts.picker}>
-        <SourceFilesProvider sourceFiles={opts.sourceFiles ?? noopSourceFiles}>
-          <NotifierProvider notifier={opts.notifier ?? noopNotifier}>
-            <MemoryRouter initialEntries={opts.initialEntries ?? ["/"]}>
-              <AppRoutes />
-            </MemoryRouter>
-          </NotifierProvider>
-        </SourceFilesProvider>
-      </VaultProvider>
+      <AIProvider
+        secretStore={opts.secretStore ?? new InMemorySecretStore()}
+        createProviderFn={opts.createProviderFn ?? createProvider}
+      >
+        <VaultProvider connect={opts.connect} picker={opts.picker}>
+          <SourceFilesProvider sourceFiles={opts.sourceFiles ?? noopSourceFiles}>
+            <NotifierProvider notifier={opts.notifier ?? noopNotifier}>
+              <MemoryRouter initialEntries={opts.initialEntries ?? ["/"]}>
+                <AppRoutes />
+              </MemoryRouter>
+            </NotifierProvider>
+          </SourceFilesProvider>
+        </VaultProvider>
+      </AIProvider>
     </DbProvider>,
   );
 }

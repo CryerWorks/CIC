@@ -207,6 +207,52 @@ fn open_url_in_default_browser(_url: String) -> Result<(), String> {
     Err("default-browser open is only implemented on Windows".into())
 }
 
+// Feature 016 — AI provider layer secrets storage. The three `ai_keychain_*` commands wrap the
+// `keyring` crate (which speaks to Windows Credential Manager / macOS Keychain / Linux libsecret
+// directly) so API keys never live in cleartext on disk (Constitution II). Service name is fixed
+// at `cic.ai.providers`; the per-provider `ref` is the keychain "username", which (in v1) equals
+// the provider's id. The only TypeScript caller is `src/ai/adapters/secrets/tauri.ts`.
+
+const AI_KEYCHAIN_SERVICE: &str = "cic.ai.providers";
+
+#[tauri::command]
+fn ai_keychain_set(reference: String, secret: String) -> Result<(), String> {
+    if reference.is_empty() {
+        return Err("ref is required".into());
+    }
+    if secret.is_empty() {
+        return Err("secret is required".into());
+    }
+    let entry = keyring::Entry::new(AI_KEYCHAIN_SERVICE, &reference).map_err(|e| e.to_string())?;
+    entry.set_password(&secret).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn ai_keychain_get(reference: String) -> Result<Option<String>, String> {
+    if reference.is_empty() {
+        return Err("ref is required".into());
+    }
+    let entry = keyring::Entry::new(AI_KEYCHAIN_SERVICE, &reference).map_err(|e| e.to_string())?;
+    match entry.get_password() {
+        Ok(s) => Ok(Some(s)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[tauri::command]
+fn ai_keychain_delete(reference: String) -> Result<(), String> {
+    if reference.is_empty() {
+        return Err("ref is required".into());
+    }
+    let entry = keyring::Entry::new(AI_KEYCHAIN_SERVICE, &reference).map_err(|e| e.to_string())?;
+    match entry.delete_credential() {
+        Ok(()) => Ok(()),
+        Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -215,11 +261,17 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
+        // Feature 016 (CORS fix): native HTTP so AI provider calls bypass the webview's CORS
+        // (which blocks local LLM servers that send no Access-Control-Allow-Origin). See Cargo.toml.
+        .plugin(tauri_plugin_http::init())
         .invoke_handler(tauri::generate_handler![
             grant_vault_access,
             import_resource_file,
             remove_resource_files,
-            open_url_in_default_browser
+            open_url_in_default_browser,
+            ai_keychain_set,
+            ai_keychain_get,
+            ai_keychain_delete
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

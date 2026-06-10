@@ -26,4 +26,18 @@ tauri-plugin-dialog = "2"
 tauri-plugin-notification = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Feature 016: native OS credential store for the AI provider layer's SecretStore.
+# `keyring` v3 wraps the platform credential store directly (Windows Credential Manager,
+# macOS Keychain Services, Linux libsecret). Used by a thin custom Tauri command
+# (ai_keychain_{set,get,delete}); the TypeScript adapter at src/ai/adapters/secrets/tauri.ts
+# is the only invoker. Per Constitution II, secrets never live in plaintext on disk.
+keyring = "3"
+# Feature 016 (CORS fix): native HTTP for AI provider calls. The webview's fetch() enforces
+# CORS, but local LLM servers (Ollama, LM Studio, …) send no Access-Control-Allow-Origin, so the
+# webview blocks the response even though the server answered. tauri-plugin-http runs the request
+# in Rust (reqwest), outside the webview origin, so CORS never applies; it streams responses
+# incrementally (≥2.4.1). `unsafe-headers` is REQUIRED so Anthropic's `x-api-key`/`anthropic-version`
+# (browser-forbidden headers) aren't silently dropped. Frontend uses it only via the boundary-
+# confined seam src/ai/adapters/tauriFetch.ts.
+tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
 
