@@ -156,5 +156,5 @@ export function useResources() {
     [db, load, sourceFiles],
   );
 
-  return { loading, resources, courses, domains, links, add, edit, remove };
+  return { loading, resources, courses, domains, links, add, edit, remove, reload: load };
 }

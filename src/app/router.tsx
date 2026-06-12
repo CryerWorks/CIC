@@ -5,6 +5,7 @@ import { CoursesRoute } from "../features/courses/CoursesRoute";
 import { CourseDetailRoute } from "../features/courses/CourseDetailRoute";
 import { ReviewRoute } from "../features/srs/ReviewRoute";
 import { ResourcesRoute } from "../features/resources/ResourcesRoute";
+import { SearchCorpusRoute } from "../features/search/SearchCorpusRoute";
 import { LoopRoute } from "../features/loop/LoopRoute";
 import { DomainsRoute } from "./routes/domains/DomainsRoute";
 import { VaultRoute } from "./routes/vault/VaultRoute";
@@ -29,6 +30,7 @@ export function AppRoutes() {
         <Route path="loop" element={<LoopRoute />} />
         <Route path="review" element={<ReviewRoute />} />
         <Route path="resources" element={<ResourcesRoute />} />
+        <Route path="search" element={<SearchCorpusRoute />} />
         <Route path="settings" element={<SettingsRoute />} />
         <Route path="style" element={<StyleGuide />} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -8,6 +8,8 @@ import { DbProvider } from "./app/providers/DbProvider";
 import { VaultProvider } from "./app/providers/VaultProvider";
 import { AIProvider } from "./app/providers/AIProvider";
 import { SourceFilesProvider } from "./features/resources/SourceFilesProvider";
+import { RAGProvider } from "./app/providers/RAGProvider";
+import { createTauriVectorStore } from "./ai/adapters/rag/tauri";
 import { NotifierProvider } from "./notifications/NotifierProvider";
 import { ReminderScheduler } from "./features/notifications/ReminderScheduler";
 import { AppRoutes } from "./app/router";
@@ -22,14 +24,16 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <DbProvider>
       <AIProvider>
         <VaultProvider>
-          <SourceFilesProvider>
-            <NotifierProvider>
-              <ReminderScheduler />
-              <HashRouter>
-                <AppRoutes />
-              </HashRouter>
-            </NotifierProvider>
-          </SourceFilesProvider>
+          <RAGProvider store={createTauriVectorStore()}>
+            <SourceFilesProvider>
+              <NotifierProvider>
+                <ReminderScheduler />
+                <HashRouter>
+                  <AppRoutes />
+                </HashRouter>
+              </NotifierProvider>
+            </SourceFilesProvider>
+          </RAGProvider>
         </VaultProvider>
       </AIProvider>
     </DbProvider>

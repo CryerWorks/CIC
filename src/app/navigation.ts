@@ -13,6 +13,7 @@ export const DESTINATIONS: NavDestination[] = [
   { path: "/loop", label: "Daily Loop", implemented: true },
   { path: "/review", label: "Review", implemented: true },
   { path: "/resources", label: "Resources", implemented: true },
+  { path: "/search", label: "Search", implemented: true },
   { path: "/vault", label: "Vault", implemented: true },
   { path: "/settings", label: "Settings", implemented: true },
   { path: "/style", label: "Style guide", implemented: true },

@@ -32,12 +32,16 @@ serde_json = "1"
 # (ai_keychain_{set,get,delete}); the TypeScript adapter at src/ai/adapters/secrets/tauri.ts
 # is the only invoker. Per Constitution II, secrets never live in plaintext on disk.
 keyring = "3"
-# Feature 016 (CORS fix): native HTTP for AI provider calls. The webview's fetch() enforces
-# CORS, but local LLM servers (Ollama, LM Studio, …) send no Access-Control-Allow-Origin, so the
-# webview blocks the response even though the server answered. tauri-plugin-http runs the request
-# in Rust (reqwest), outside the webview origin, so CORS never applies; it streams responses
-# incrementally (≥2.4.1). `unsafe-headers` is REQUIRED so Anthropic's `x-api-key`/`anthropic-version`
-# (browser-forbidden headers) aren't silently dropped. Frontend uses it only via the boundary-
-# confined seam src/ai/adapters/tauriFetch.ts.
+# Feature 016 (CORS fix): native HTTP for AI provider calls.
+# …
 tauri-plugin-http = { version = "2", features = ["unsafe-headers"] }
+# Feature 017: vector store via sqlite-vec. Mozilla-backed brute-force exact KNN
+# with binary-quantisation option. Rust crate + npm package; the Rust side manages
+# the vec0 virtual table; the TS adapter at src/ai/adapters/rag/tauri.ts calls
+# custom commands in src-tauri/src/rag.rs.
+sqlite-vec = "0.1.9"
+# Feature 017 companion: rusqlite with bundled SQLite so custom RAG commands can
+# directly execute sqlite-vec functions (vec_f32, MATCH) without going through
+# the tauri-plugin-sql JS layer.
+rusqlite = { version = "0.32", features = ["bundled"] }
 

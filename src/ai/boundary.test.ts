@@ -24,10 +24,10 @@ const FORBIDDEN_SYMBOLS = [
   "AnthropicAdapter",
 ];
 
-const ADAPTER_PATH_RE = /from\s+["'].*\/ai\/adapters\/[^"']+["']/;
+const ADAPTER_PATH_RE = /(?:from|require)\s*\(?\s*["'].*\/ai\/adapters\/[^"']+["']/;
 // `createProvider` from `../ai/adapters` (or `../../ai/adapters`, etc.) is the composition-root
 // integration point; we allow the AIProvider + test-support to import it, NOT feature code.
-const CREATE_PROVIDER_PATH_RE = /from\s+["'].*\/ai\/adapters["']/;
+const CREATE_PROVIDER_PATH_RE = /(?:from|require)\s*\(?\s*["'].*\/ai\/adapters["']/;
 
 const EXEMPT_FILES = new Set<string>([
   // Adapter directory itself — internal imports are fine.
@@ -42,6 +42,7 @@ const EXEMPT_PREFIXES = [
 const COMPOSITION_ROOT_EXEMPTIONS = [
   "app/providers/AIProvider.tsx",
   "app/test-support.tsx",
+  "main.tsx", // App composition root — wires RAG adapter into the provider tree
 ];
 
 function* walkTsFiles(dir: string): Iterable<string> {

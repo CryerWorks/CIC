@@ -253,6 +253,11 @@ fn ai_keychain_delete(reference: String) -> Result<(), String> {
     }
 }
 
+// Feature 017 — RAG ingestion: sqlite-vec vector search commands. Six custom Tauri commands
+// for init, insert, search, delete, and stats. The sqlite-vec Rust crate does exact KNN via
+// vec0 virtual table MATCH. Every command gates on vault_id for data isolation.
+mod rag;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -271,7 +276,15 @@ pub fn run() {
             open_url_in_default_browser,
             ai_keychain_set,
             ai_keychain_get,
-            ai_keychain_delete
+            ai_keychain_delete,
+            rag::rag_init,
+            rag::rag_insert_chunks,
+            rag::rag_delete_by_source,
+            rag::rag_search,
+            rag::rag_get_source_stats,
+            rag::rag_get_chunk_count,
+            rag::rag_get_source_hashes,
+            rag::rag_read_resource_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

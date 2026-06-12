@@ -7,6 +7,9 @@ import { SourceFilesProvider } from "../features/resources/SourceFilesProvider";
 import type { SourceFiles } from "../features/resources/sourceFiles";
 import { NotifierProvider } from "../notifications/NotifierProvider";
 import type { Notifier } from "../notifications/notifier";
+import { RAGProvider } from "./providers/RAGProvider";
+import type { VectorStore } from "../ai/rag/vectorStore";
+import { noopVectorStore } from "./providers/rag-test";
 import type { FolderPicker } from "./providers/vault/picker";
 import type { VaultConnector } from "./providers/vault/connect";
 import { AppRoutes } from "./router";
@@ -73,6 +76,8 @@ export function renderApp(opts: {
    *  unless a test seeds a config — the AI section is the only route that mounts AI consumers). */
   secretStore?: SecretStore;
   createProviderFn?: typeof createProvider;
+  /** Test seam for Feature 017 RAG pipeline. Defaults to a no-op fake. */
+  vectorStore?: VectorStore;
 } = {}) {
   return render(
     <DbProvider initialize={opts.initialize ?? makeReadyDb}>
@@ -81,11 +86,13 @@ export function renderApp(opts: {
         createProviderFn={opts.createProviderFn ?? createProvider}
       >
         <VaultProvider connect={opts.connect} picker={opts.picker}>
-          <SourceFilesProvider sourceFiles={opts.sourceFiles ?? noopSourceFiles}>
-            <NotifierProvider notifier={opts.notifier ?? noopNotifier}>
-              <MemoryRouter initialEntries={opts.initialEntries ?? ["/"]}>
-                <AppRoutes />
-              </MemoryRouter>
+            <SourceFilesProvider sourceFiles={opts.sourceFiles ?? noopSourceFiles}>
+              <NotifierProvider notifier={opts.notifier ?? noopNotifier}>
+                <RAGProvider store={opts.vectorStore ?? noopVectorStore}>
+                  <MemoryRouter initialEntries={opts.initialEntries ?? ["/"]}>
+                    <AppRoutes />
+                  </MemoryRouter>
+                </RAGProvider>
             </NotifierProvider>
           </SourceFilesProvider>
         </VaultProvider>

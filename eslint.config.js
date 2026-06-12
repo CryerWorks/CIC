@@ -53,6 +53,10 @@ export default tseslint.config(
             // may be imported ONLY inside src/features/srs/fsrs/scheduler.ts, so the rest of the
             // app depends on the `Scheduler` interface, never `ts-fsrs` types (Constitution IV).
             { name: "ts-fsrs", message: "ts-fsrs may only be imported inside src/features/srs/fsrs/scheduler.ts — depend on the Scheduler seam instead." },
+            // Feature 017: sqlite-vec is the vector database engine — it may only be imported
+            // inside src/ai/adapters/rag/* (the Node.js test adapter); the rest of the app
+            // depends on the VectorStore seam (Constitution IV / R1).
+            { name: "sqlite-vec", message: "sqlite-vec may only be imported inside src/ai/adapters/rag/* — depend on the VectorStore seam instead." },
           ],
         },
       ],

@@ -104,6 +104,16 @@ export async function updateResource(
   return updated;
 }
 
+/** Set the `ingested_at` timestamp on a Resource (Feature 017). */
+export async function setResourceIngested(db: SqlExecutor, id: string): Promise<void> {
+  await db.execute("UPDATE resources SET ingested_at = ? WHERE id = ?", [new Date().toISOString(), id]);
+}
+
+/** Clear `ingested_at` on a Resource (Feature 017 — remove from index). */
+export async function clearResourceIngested(db: SqlExecutor, id: string): Promise<void> {
+  await db.execute("UPDATE resources SET ingested_at = NULL WHERE id = ?", [id]);
+}
+
 /** Delete a Resource. `ON DELETE CASCADE` removes its course/card/session/project links — cards
  *  themselves are untouched (only the citation link rows go). */
 export async function deleteResource(db: SqlExecutor, id: string): Promise<void> {

@@ -4,6 +4,7 @@ import { Panel, Button, Callout, Tag } from "../../components/ui";
 import { useVaultState } from "../../app/providers/VaultProvider";
 import { useResources, type ResourceInput } from "./useResources";
 import { ResourceForm } from "./ResourceForm";
+import { useRAG } from "../../ai/rag/hooks/useRAG";
 import type { Resource } from "../../db";
 
 const KIND_LABEL: Record<string, string> = {
@@ -52,9 +53,11 @@ function toInput(r: Resource): ResourceInput {
 }
 
 function ResourcesManager() {
-  const { loading, resources, courses, domains, links, add, edit, remove } = useResources();
+  const { loading, resources, courses, domains, links, add, edit, remove, reload } = useResources();
+  const { ingestMarkdownResource, ingestEpubResource, unindexResource } = useRAG();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [filterDomainId, setFilterDomainId] = useState("");
+  const [ingesting, setIngesting] = useState<string | null>(null);
 
   const submit = async (input: ResourceInput) => {
     if (editor?.mode === "edit") await edit(editor.resource.id, input);
@@ -129,6 +132,34 @@ function ResourcesManager() {
                   <span className="truncate text-text">{r.title}</span>
                   <div className="flex shrink-0 items-center gap-2">
                     <Tag tone="neutral">{KIND_LABEL[r.kind] ?? r.kind}</Tag>
+                    {r.ingested_at && <Tag tone="brand">Ingested</Tag>}
+                    {(r.kind === "markdown" || r.kind === "epub") && r.file_path && (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={ingesting === r.id}
+                        onClick={() => {
+                          setIngesting(r.id);
+                          const ingestFn = r.kind === "epub" ? ingestEpubResource : ingestMarkdownResource;
+                          ingestFn(r.id)
+                            .then(() => reload())
+                            .finally(() => setIngesting(null));
+                        }}
+                      >
+                        {ingesting === r.id ? "Ingesting…" : r.ingested_at ? "Re-ingest" : "Ingest"}
+                      </Button>
+                    )}
+                    {r.ingested_at && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          void unindexResource(r.id).then(() => reload());
+                        }}
+                      >
+                        Remove index
+                      </Button>
+                    )}
                     <Button size="sm" variant="secondary" onClick={() => setEditor({ mode: "edit", resource: r })}>
                       Edit
                     </Button>
