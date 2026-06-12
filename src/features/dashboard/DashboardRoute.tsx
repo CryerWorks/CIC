@@ -1,11 +1,14 @@
+import { useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Panel, StatCell, Tag, Callout } from "../../components/ui";
-import { useVaultState } from "../../app/providers/VaultProvider";
-import { useDbState } from "../../app/providers/DbProvider";
+import { useVaultState, useVault, useActiveVaultId } from "../../app/providers/VaultProvider";
+import { useDbState, useDb } from "../../app/providers/DbProvider";
+import { reconcileCompleted } from "../../db";
 import { useDashboard } from "./useDashboard";
 import { MilestoneProgress } from "./MilestoneProgress";
 import { DomainAllocation } from "./DomainAllocation";
 import { OverconfidentTile } from "./OverconfidentTile";
+import { GapsTile } from "./GapsTile";
 import { DeferredTiles } from "./DeferredTiles";
 
 /**
@@ -43,7 +46,25 @@ export function DashboardRoute() {
 }
 
 function DashboardView({ vaultReady }: { vaultReady: boolean }) {
-  const { loading, summary, courseGroups, dueCount, overconfident } = useDashboard();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { loading, summary, courseGroups, dueCount, overconfident, gapCounts } =
+    useDashboard(refreshKey);
+  const vault = useVault();
+  const db = useDb();
+  const vaultId = useActiveVaultId();
+
+  const handleRefreshGaps = useCallback(async () => {
+    if (!vaultId) return;
+    await reconcileCompleted(db, vaultId, async (notePath) => {
+      try {
+        const note = await vault.reader.readNote(notePath);
+        return note.body;
+      } catch {
+        return null;
+      }
+    });
+    setRefreshKey((k) => k + 1);
+  }, [db, vaultId, vault.reader]);
 
   if (loading || !summary) return <p className="text-text-dim">Loading…</p>;
   if (summary.totals.domains === 0) return <Onboarding vaultReady={vaultReady} />;
@@ -79,6 +100,7 @@ function DashboardView({ vaultReady }: { vaultReady: boolean }) {
             <div className="text-[11px] text-text-dim">cards in this vault</div>
           </Link>
           <OverconfidentTile cards={overconfident} />
+          {gapCounts.length > 0 && <GapsTile gaps={gapCounts} onRefresh={handleRefreshGaps} />}
         </div>
       </Panel>
 

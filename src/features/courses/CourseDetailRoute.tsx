@@ -8,6 +8,7 @@ import { SessionPlanner } from "./SessionPlanner";
 import { CardForm } from "./CardForm";
 import { CardCitations } from "./CardCitations";
 import { ProjectsSection } from "../projects/ProjectsSection";
+import { FeynmanPanel } from "../feynman/FeynmanPanel";
 import type { Card } from "../../db";
 
 /** A Course's detail screen (Feature 010, US2): its cards, plus authoring. Gated on a connected
@@ -40,6 +41,7 @@ type Editor = { mode: "new" } | { mode: "edit"; card: Card };
 function CourseDetailView({ courseId }: { courseId: string }) {
   const { loading, course, cards, addCard, editCard, removeCard } = useCourseCards(courseId);
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [showFeynman, setShowFeynman] = useState(false);
 
   if (loading) return <p className="text-text-dim">Loading…</p>;
   if (!course) {
@@ -69,9 +71,14 @@ function CourseDetailView({ courseId }: { courseId: string }) {
   return (
     <div className="mx-auto max-w-2xl">
       <div className="mb-4">
-        <Link to="/courses" className="text-sm text-text-dim hover:text-text">
-          ← Courses
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/courses" className="text-sm text-text-dim hover:text-text">
+            ← Courses
+          </Link>
+          <Button variant="secondary" size="sm" onClick={() => setShowFeynman(true)}>
+            Feynman Tutor
+          </Button>
+        </div>
         <h1 className="mt-1 text-xl font-bold text-text">{course.title}</h1>
       </div>
 
@@ -135,6 +142,17 @@ function CourseDetailView({ courseId }: { courseId: string }) {
       <CourseSessions courseId={courseId} />
 
       <ProjectsSection courseId={courseId} />
+
+      {showFeynman && (
+        <FeynmanPanel
+          gapSaveTarget={{
+            type: "session-writeup",
+            notePath: `Courses/${course.title || courseId}.md`,
+            courseId,
+          }}
+          onClose={() => setShowFeynman(false)}
+        />
+      )}
     </div>
   );
 }

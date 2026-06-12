@@ -5,8 +5,8 @@ import { migrate, type Migration } from "./migrate";
 import { migrations as registered } from "./migrations";
 import { insert } from "./repositories/query";
 
-const addColumnV10: Migration = {
-  version: 10, // one past the latest registered (v9 = m0009 rag)
+const addColumnV11: Migration = {
+  version: 11, // one past the latest registered (v10 = m0010 feynman_gaps)
   name: "add-domains-icon",
   sql: "ALTER TABLE domains ADD COLUMN icon TEXT",
 };
@@ -14,13 +14,13 @@ const addColumnV10: Migration = {
 describe("lossless upgrade (FR-008/SC-005)", () => {
   it("preserves rows inserted at the current version when a later migration adds a column", async () => {
     const db = NodeSqlExecutor.open();
-    await migrate(db); // latest registered (v9)
+    await migrate(db); // latest registered (v10)
 
     const id = crypto.randomUUID();
     await insert(db, "domains", { id, name: "Physics", color: "#00bfbc" });
 
-    const result = await migrate(db, [...registered, addColumnV10]);
-    expect(result).toEqual({ from: 9, to: 10, applied: 1 });
+    const result = await migrate(db, [...registered, addColumnV11]);
+    expect(result).toEqual({ from: 10, to: 11, applied: 1 });
 
     const rows = await db.select<{ id: string; name: string; color: string; icon: string | null }>(
       "SELECT * FROM domains WHERE id = ?",

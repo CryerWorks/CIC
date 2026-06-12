@@ -7,10 +7,12 @@ import {
   countDueCards,
   getNewCardCap,
   getOverconfidentCards,
+  getOpenGapCountByCourse,
   type DashboardSummary,
   type DomainAllocation,
   type Course,
   type Card,
+  type GapCountByCourse,
 } from "../../db";
 
 /**
@@ -19,6 +21,8 @@ import {
  * `summary.allocation`) for the at-a-glance list. Read-only — no mutators. Keyed on the active
  * vault id, so switching vaults re-scopes every tile (FR-007); with no vault it stays empty (the
  * route shows connect-a-vault guidance instead — FR-006).
+ *
+ * Phase 4 (Feature 018): also loads open Feynman gap counts for the "Gaps to Chase" tile.
  */
 
 export interface DashboardCourseGroup {
@@ -34,15 +38,18 @@ export interface DashboardData {
   dueCount: number;
   /** Cards whose latest review was high-confidence but failed (F3.5 calibration). */
   overconfident: Card[];
+  /** Open Feynman gaps grouped by course (Feature 018). */
+  gapCounts: GapCountByCourse[];
 }
 
-export function useDashboard(): DashboardData {
+export function useDashboard(refreshKey = 0): DashboardData {
   const db = useDb();
   const vaultId = useActiveVaultId();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [courseGroups, setCourseGroups] = useState<DashboardCourseGroup[]>([]);
   const [dueCount, setDueCount] = useState(0);
   const [overconfident, setOverconfident] = useState<Card[]>([]);
+  const [gapCounts, setGapCounts] = useState<GapCountByCourse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,6 +59,7 @@ export function useDashboard(): DashboardData {
       setCourseGroups([]);
       setDueCount(0);
       setOverconfident([]);
+      setGapCounts([]);
       setLoading(false);
       return;
     }
@@ -59,11 +67,12 @@ export function useDashboard(): DashboardData {
     setLoading(true);
     (async () => {
       const cap = await getNewCardCap(db);
-      const [s, courses, due, over] = await Promise.all([
+      const [s, courses, due, over, gaps] = await Promise.all([
         getDashboardSummary(db, vaultId),
         listCourses(db, vaultId),
         countDueCards(db, vaultId, new Date().toISOString(), cap),
         getOverconfidentCards(db, vaultId),
+        getOpenGapCountByCourse(db, vaultId),
       ]);
       if (!active) return;
       setSummary(s);
@@ -75,11 +84,12 @@ export function useDashboard(): DashboardData {
       );
       setDueCount(due);
       setOverconfident(over);
+      setGapCounts(gaps);
     })().finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
-  }, [db, vaultId]);
+  }, [db, vaultId, refreshKey]);
 
-  return { loading, summary, courseGroups, dueCount, overconfident };
+  return { loading, summary, courseGroups, dueCount, overconfident, gapCounts };
 }

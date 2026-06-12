@@ -51,4 +51,8 @@ export * from "./repositories/sessions";
 // Feature 015: Projects (applied practice) — projects + project_milestones/_resources (m0001),
 // title column added in m0008.
 export * from "./repositories/projects";
+
+// Feature 018: Feynman/Socratic Tutor — gap tracking (m0010).
+export * from "./repositories/feynmanGaps";
+
 export { metadataSchemaFor, type ResourceMetadata } from "./models/resourceMetadata";

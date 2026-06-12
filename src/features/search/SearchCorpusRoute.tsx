@@ -4,6 +4,7 @@ import { useVaultState, useVault } from "../../app/providers/VaultProvider";
 import { useRAG } from "../../ai/rag/hooks/useRAG";
 import { SearchFilters } from "./SearchFilters";
 import { SearchResults } from "./SearchResults";
+import { FeynmanPanel } from "../feynman/FeynmanPanel";
 import type { ChunkSourceKind, SearchResult } from "../../ai/rag/types";
 
 interface IndexedNote {
@@ -32,6 +33,7 @@ function SearchCorpusView() {
   const { search, fetchIndexedNotes, indexVaultNote, unindexVaultNote, checkNoteIndexed, inProgress } = useRAG();
   const vault = useVault();
   const [query, setQuery] = useState("");
+  const [showFeynman, setShowFeynman] = useState(false);
   const [sourceKind, setSourceKind] = useState<ChunkSourceKind | "all">("all");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -170,6 +172,23 @@ function SearchCorpusView() {
 
       {searched && !loading && !error && (
         <SearchResults results={results} loading={loading} />
+      )}
+
+      {/* Feynman Tutor */}
+      <div className="flex justify-end">
+        <Button variant="secondary" size="sm" onClick={() => setShowFeynman(true)}>
+          Feynman Tutor
+        </Button>
+      </div>
+
+      {showFeynman && (
+        <FeynmanPanel
+          gapSaveTarget={{
+            type: "session-writeup",
+            notePath: "Feynman/search-session.md",
+          }}
+          onClose={() => setShowFeynman(false)}
+        />
       )}
 
       {/* Note Indexing */}
