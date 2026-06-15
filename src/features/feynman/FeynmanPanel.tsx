@@ -11,6 +11,7 @@
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
 import { Button } from "../../components/ui/Button";
 import { FeynmanMessage } from "./FeynmanMessage";
+import { QuizPanel } from "../quiz/QuizPanel";
 import { useFeynmanTutor } from "../../ai/features/feynman/hooks/useFeynmanTutor";
 import type { GapSaveTarget } from "../../ai/features/feynman/types";
 
@@ -29,6 +30,7 @@ export function FeynmanPanel({ gapSaveTarget, onClose }: FeynmanPanelProps) {
   const [gaps, setGaps] = useState<Array<{ text: string }> | null>(null);
   const [gapSaving, setGapSaving] = useState(false);
   const [gapSaved, setGapSaved] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -146,16 +148,34 @@ export function FeynmanPanel({ gapSaveTarget, onClose }: FeynmanPanelProps) {
             {gapSaved ? (
               <p className="text-xs text-success">Gaps saved successfully.</p>
             ) : (
-              <Button
-                size="sm"
-                variant="primary"
-                disabled={gapSaving}
-                onClick={handleSaveGaps}
-              >
-                {gapSaving ? "Saving…" : "Save Gaps"}
-              </Button>
+              <>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    disabled={gapSaving}
+                    onClick={handleSaveGaps}
+                  >
+                    {gapSaving ? "Saving…" : "Save Gaps"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => setShowQuiz(true)}
+                  >
+                    Quiz me on these gaps
+                  </Button>
+                </div>
+              </>
             )}
           </div>
+        )}
+        {showQuiz && gaps && (
+          <QuizPanel
+            topic={gaps.map((g) => g.text).join("; ").slice(0, 200)}
+            courseId={gapSaveTarget.courseId}
+            onClose={() => setShowQuiz(false)}
+          />
         )}
 
         {/* Summarize + Input area */}

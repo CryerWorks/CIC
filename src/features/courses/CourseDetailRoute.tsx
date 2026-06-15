@@ -9,6 +9,7 @@ import { CardForm } from "./CardForm";
 import { CardCitations } from "./CardCitations";
 import { ProjectsSection } from "../projects/ProjectsSection";
 import { FeynmanPanel } from "../feynman/FeynmanPanel";
+import { QuizPanel } from "../quiz/QuizPanel";
 import type { Card } from "../../db";
 
 /** A Course's detail screen (Feature 010, US2): its cards, plus authoring. Gated on a connected
@@ -42,6 +43,7 @@ function CourseDetailView({ courseId }: { courseId: string }) {
   const { loading, course, cards, addCard, editCard, removeCard } = useCourseCards(courseId);
   const [editor, setEditor] = useState<Editor | null>(null);
   const [showFeynman, setShowFeynman] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
 
   if (loading) return <p className="text-text-dim">Loading…</p>;
   if (!course) {
@@ -75,9 +77,14 @@ function CourseDetailView({ courseId }: { courseId: string }) {
           <Link to="/courses" className="text-sm text-text-dim hover:text-text">
             ← Courses
           </Link>
-          <Button variant="secondary" size="sm" onClick={() => setShowFeynman(true)}>
-            Feynman Tutor
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setShowQuiz(true)}>
+              Quiz this course
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => setShowFeynman(true)}>
+              Feynman Tutor
+            </Button>
+          </div>
         </div>
         <h1 className="mt-1 text-xl font-bold text-text">{course.title}</h1>
       </div>
@@ -151,6 +158,14 @@ function CourseDetailView({ courseId }: { courseId: string }) {
             courseId,
           }}
           onClose={() => setShowFeynman(false)}
+        />
+      )}
+
+      {showQuiz && (
+        <QuizPanel
+          topic={course.title || courseId}
+          courseId={courseId}
+          onClose={() => setShowQuiz(false)}
         />
       )}
     </div>
