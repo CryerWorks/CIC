@@ -5,6 +5,7 @@ import { useVaultState } from "../../app/providers/VaultProvider";
 import { useCourses, type CourseInput, type CourseEditData } from "./useCourses";
 import { CourseForm } from "./CourseForm";
 import { DeleteCourseDialog } from "./DeleteCourseDialog";
+import { NewCourseEntry } from "../blueprint/NewCourseEntry";
 import type { Course } from "../../db";
 
 /** The Courses screen. Gates on a connected vault (Courses materialize into the vault), then
@@ -50,6 +51,7 @@ function CoursesManager() {
     hasPendingReapply,
   } = useCourses();
   const [editor, setEditor] = useState<Editor | null>(null);
+  const [showBlueprint, setShowBlueprint] = useState(false);
   const [deleting, setDeleting] = useState<Course | null>(null);
   const [rescanMsg, setRescanMsg] = useState<string | null>(null);
 
@@ -79,13 +81,18 @@ function CoursesManager() {
     <div className="mx-auto max-w-2xl">
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-xl font-bold text-text">Courses</h1>
-        {editor === null && (
+        {editor === null && !showBlueprint && (
           <div className="flex items-center gap-2">
             <Button variant="secondary" onClick={() => void handleRescan()}>
               Rescan vault
             </Button>
             {domains.length > 0 && (
-              <Button onClick={() => setEditor({ mode: "new" })}>New course</Button>
+              <>
+                <Button variant="secondary" onClick={() => setShowBlueprint(true)}>
+                  Design with AI
+                </Button>
+                <Button onClick={() => setEditor({ mode: "new" })}>New course</Button>
+              </>
             )}
           </div>
         )}
@@ -152,7 +159,10 @@ function CoursesManager() {
                 <p className="mt-1 text-sm text-text-dim">
                   Create a Course and it appears as a MOC in your vault.
                 </p>
-                <div className="mt-4 flex justify-center">
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <Button variant="secondary" onClick={() => setShowBlueprint(true)}>
+                    Design with AI
+                  </Button>
                   <Button onClick={() => setEditor({ mode: "new" })}>Create your first course</Button>
                 </div>
               </div>
@@ -211,6 +221,10 @@ function CoursesManager() {
             return result;
           }}
         />
+      )}
+
+      {showBlueprint && (
+        <NewCourseEntry onClose={() => setShowBlueprint(false)} />
       )}
     </div>
   );
