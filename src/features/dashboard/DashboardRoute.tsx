@@ -11,6 +11,7 @@ import { OverconfidentTile } from "./OverconfidentTile";
 import { GapsTile } from "./GapsTile";
 import { DailyMixTile } from "./DailyMixTile";
 import { ColdTile } from "./ColdTile";
+import { KnowledgeGraph } from "./KnowledgeGraph";
 import { DeferredTiles } from "./DeferredTiles";
 
 /**
@@ -49,7 +50,7 @@ export function DashboardRoute() {
 
 function DashboardView({ vaultReady }: { vaultReady: boolean }) {
   const [refreshKey, setRefreshKey] = useState(0);
-  const { loading, summary, courseGroups, dueCount, overconfident, gapCounts, dailyMix, coldDomains } =
+  const { loading, summary, courseGroups, dueCount, overconfident, gapCounts, dailyMix, coldDomains, knowledgeGraph } =
     useDashboard(refreshKey);
   const vault = useVault();
   const db = useDb();
@@ -175,6 +176,15 @@ function DashboardView({ vaultReady }: { vaultReady: boolean }) {
                 </section>
               ))}
           </div>
+        </Panel>
+      )}
+
+      {(knowledgeGraph.mostLinked.length > 0 || knowledgeGraph.crossDomainBridges.length > 0) && (
+        <Panel title="Knowledge Graph">
+          <KnowledgeGraph
+            mostLinked={knowledgeGraph.mostLinked}
+            crossDomainBridges={knowledgeGraph.crossDomainBridges}
+          />
         </Panel>
       )}
 

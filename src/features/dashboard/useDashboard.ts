@@ -15,6 +15,7 @@ import {
   type GapCountByCourse,
 } from "../../db";
 import { getDailyMix, getColdDomains, type DailyMixItem, type ColdDomain } from "../interleaving/scheduler";
+import { getLinkedNotes, type KnowledgeGraphData } from "./graphQueries";
 
 /**
  * Dashboard screen state (Feature 008 / F8, vault-scoped per 009). Loads the read-only aggregate
@@ -25,6 +26,7 @@ import { getDailyMix, getColdDomains, type DailyMixItem, type ColdDomain } from 
  *
  * Phase 4 (Feature 018): also loads open Feynman gap counts for the "Gaps to Chase" tile.
  * Phase 6 (Feature 021): loads interleaving scheduler data for Daily Mix + Going Cold tiles.
+ * Phase 7 (Feature 022): loads knowledge graph data for the "Knowledge Graph" tile.
  */
 
 export interface DashboardCourseGroup {
@@ -46,6 +48,8 @@ export interface DashboardData {
   dailyMix: DailyMixItem[];
   /** Cold domains (Feature 021). */
   coldDomains: ColdDomain[];
+  /** Knowledge graph: most-linked notes + cross-domain bridges (Feature 022). */
+  knowledgeGraph: KnowledgeGraphData;
 }
 
 export function useDashboard(refreshKey = 0): DashboardData {
@@ -58,6 +62,10 @@ export function useDashboard(refreshKey = 0): DashboardData {
   const [gapCounts, setGapCounts] = useState<GapCountByCourse[]>([]);
   const [dailyMix, setDailyMix] = useState<DailyMixItem[]>([]);
   const [coldDomains, setColdDomains] = useState<ColdDomain[]>([]);
+  const [knowledgeGraph, setKnowledgeGraph] = useState<KnowledgeGraphData>({
+    mostLinked: [],
+    crossDomainBridges: [],
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -70,6 +78,7 @@ export function useDashboard(refreshKey = 0): DashboardData {
       setGapCounts([]);
       setDailyMix([]);
       setColdDomains([]);
+      setKnowledgeGraph({ mostLinked: [], crossDomainBridges: [] });
       setLoading(false);
       return;
     }
@@ -90,6 +99,10 @@ export function useDashboard(refreshKey = 0): DashboardData {
         getDailyMix(db, vaultId).catch(() => [] as DailyMixItem[]),
         getColdDomains(db, vaultId).catch(() => [] as ColdDomain[]),
       ]);
+      // Feature 022 knowledge graph — pure read-model, loaded separately.
+      const kg = await getLinkedNotes(db, vaultId).catch(
+        () => ({ mostLinked: [], crossDomainBridges: [] } as KnowledgeGraphData),
+      );
       if (!active) return;
       setSummary(s);
       setCourseGroups(
@@ -103,11 +116,12 @@ export function useDashboard(refreshKey = 0): DashboardData {
       setGapCounts(gaps);
       setDailyMix(mix);
       setColdDomains(cold);
+      setKnowledgeGraph(kg);
     })().finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, [db, vaultId, refreshKey]);
 
-  return { loading, summary, courseGroups, dueCount, overconfident, gapCounts, dailyMix, coldDomains };
+  return { loading, summary, courseGroups, dueCount, overconfident, gapCounts, dailyMix, coldDomains, knowledgeGraph };
 }
