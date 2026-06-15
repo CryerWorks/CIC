@@ -117,7 +117,7 @@ describe("DashboardRoute — allocation & navigation (US2 · FR-003/FR-004)", ()
     });
     renderWithVault({ children: <DashboardRoute />, connect: connectAs(VID), initialize: () => Promise.resolve(db) });
 
-    expect(await screen.findByText("Zoology")).toBeTruthy(); // still listed
+    expect((await screen.findAllByText("Zoology")).length).toBeGreaterThanOrEqual(1); // still listed
     expect(screen.getByText(/0 courses/)).toBeTruthy();
   });
 

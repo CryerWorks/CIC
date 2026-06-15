@@ -14,6 +14,7 @@ import {
   type Card,
   type GapCountByCourse,
 } from "../../db";
+import { getDailyMix, getColdDomains, type DailyMixItem, type ColdDomain } from "../interleaving/scheduler";
 
 /**
  * Dashboard screen state (Feature 008 / F8, vault-scoped per 009). Loads the read-only aggregate
@@ -23,6 +24,7 @@ import {
  * route shows connect-a-vault guidance instead — FR-006).
  *
  * Phase 4 (Feature 018): also loads open Feynman gap counts for the "Gaps to Chase" tile.
+ * Phase 6 (Feature 021): loads interleaving scheduler data for Daily Mix + Going Cold tiles.
  */
 
 export interface DashboardCourseGroup {
@@ -40,6 +42,10 @@ export interface DashboardData {
   overconfident: Card[];
   /** Open Feynman gaps grouped by course (Feature 018). */
   gapCounts: GapCountByCourse[];
+  /** Daily mix recommendations (Feature 021). */
+  dailyMix: DailyMixItem[];
+  /** Cold domains (Feature 021). */
+  coldDomains: ColdDomain[];
 }
 
 export function useDashboard(refreshKey = 0): DashboardData {
@@ -50,6 +56,8 @@ export function useDashboard(refreshKey = 0): DashboardData {
   const [dueCount, setDueCount] = useState(0);
   const [overconfident, setOverconfident] = useState<Card[]>([]);
   const [gapCounts, setGapCounts] = useState<GapCountByCourse[]>([]);
+  const [dailyMix, setDailyMix] = useState<DailyMixItem[]>([]);
+  const [coldDomains, setColdDomains] = useState<ColdDomain[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,6 +68,8 @@ export function useDashboard(refreshKey = 0): DashboardData {
       setDueCount(0);
       setOverconfident([]);
       setGapCounts([]);
+      setDailyMix([]);
+      setColdDomains([]);
       setLoading(false);
       return;
     }
@@ -74,6 +84,12 @@ export function useDashboard(refreshKey = 0): DashboardData {
         getOverconfidentCards(db, vaultId),
         getOpenGapCountByCourse(db, vaultId),
       ]);
+      // Feature 021 interleaving — loaded separately so a scheduler error doesn't block
+      // the core dashboard summary (Constitution III: never fabricate, start from real data).
+      const [mix, cold] = await Promise.all([
+        getDailyMix(db, vaultId).catch(() => [] as DailyMixItem[]),
+        getColdDomains(db, vaultId).catch(() => [] as ColdDomain[]),
+      ]);
       if (!active) return;
       setSummary(s);
       setCourseGroups(
@@ -85,11 +101,13 @@ export function useDashboard(refreshKey = 0): DashboardData {
       setDueCount(due);
       setOverconfident(over);
       setGapCounts(gaps);
+      setDailyMix(mix);
+      setColdDomains(cold);
     })().finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, [db, vaultId, refreshKey]);
 
-  return { loading, summary, courseGroups, dueCount, overconfident, gapCounts };
+  return { loading, summary, courseGroups, dueCount, overconfident, gapCounts, dailyMix, coldDomains };
 }

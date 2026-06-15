@@ -9,6 +9,8 @@ import { MilestoneProgress } from "./MilestoneProgress";
 import { DomainAllocation } from "./DomainAllocation";
 import { OverconfidentTile } from "./OverconfidentTile";
 import { GapsTile } from "./GapsTile";
+import { DailyMixTile } from "./DailyMixTile";
+import { ColdTile } from "./ColdTile";
 import { DeferredTiles } from "./DeferredTiles";
 
 /**
@@ -47,7 +49,7 @@ export function DashboardRoute() {
 
 function DashboardView({ vaultReady }: { vaultReady: boolean }) {
   const [refreshKey, setRefreshKey] = useState(0);
-  const { loading, summary, courseGroups, dueCount, overconfident, gapCounts } =
+  const { loading, summary, courseGroups, dueCount, overconfident, gapCounts, dailyMix, coldDomains } =
     useDashboard(refreshKey);
   const vault = useVault();
   const db = useDb();
@@ -101,6 +103,13 @@ function DashboardView({ vaultReady }: { vaultReady: boolean }) {
           </Link>
           <OverconfidentTile cards={overconfident} />
           {gapCounts.length > 0 && <GapsTile gaps={gapCounts} onRefresh={handleRefreshGaps} />}
+        </div>
+      </Panel>
+
+      <Panel title="Interleaving">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <DailyMixTile items={dailyMix} />
+          <ColdTile domains={coldDomains} />
         </div>
       </Panel>
 
