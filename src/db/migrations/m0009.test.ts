@@ -13,7 +13,7 @@ describe("m0009 rag migration", () => {
 
   it("sets user_version to 12 after all migrations", async () => {
     const [{ user_version }] = (await db.select("PRAGMA user_version")) as { user_version: number }[];
-    expect(user_version).toBe(12);
+    expect(user_version).toBe(13);
   });
 
   it("creates chunks table with correct schema", async () => {

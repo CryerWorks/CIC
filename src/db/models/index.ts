@@ -16,3 +16,19 @@ export * from "./resource";
 export * from "./links";
 export * from "./vaultWrite";
 export * from "./setting";
+
+// Feature 022: Research Agent (F11)
+export {
+  ResearchSourceSchema,
+  LearningProfileSchema,
+  RESEARCH_SOURCE_TYPES,
+  DECLARED_LEVELS,
+  DEPTH_GOALS,
+} from "./research";
+export type {
+  ResearchSourceRow,
+  ResearchSourceType,
+  DeclaredLevel,
+  DepthGoal,
+  LearningProfileRow,
+} from "./research";

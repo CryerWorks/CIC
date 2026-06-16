@@ -30,20 +30,23 @@ const ALL_TABLES = [
   "feynman_gaps", // Feature 018 (migration m0010)
   "quiz_sessions", // Feature 019 (migration m0011)
   "course_dependencies", // Feature 021 (migration m0012)
+  "research_sources", // Feature 022 (migration m0013)
+  "learning_profiles", // Feature 022 (migration m0013)
 ];
 
 describe("migrate — fresh apply (FR-007 / SC-001)", () => {
-  it("takes user_version 0 → 12 and creates all 26 tables", async () => {
+  it("takes user_version 0 → 13 and creates all 28 tables", async () => {
+    expect(ALL_TABLES).toHaveLength(28);
     const db = NodeSqlExecutor.open();
 
     const before = await db.select<{ user_version: number }>("PRAGMA user_version");
     expect(before[0].user_version).toBe(0);
 
     const result = await migrate(db);
-    expect(result).toEqual({ from: 0, to: 12, applied: 12 });
+    expect(result).toEqual({ from: 0, to: 13, applied: 13 });
 
     const after = await db.select<{ user_version: number }>("PRAGMA user_version");
-    expect(after[0].user_version).toBe(12);
+    expect(after[0].user_version).toBe(13);
 
     const tables = await db.select<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",

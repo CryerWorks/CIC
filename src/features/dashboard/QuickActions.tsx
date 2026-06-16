@@ -10,6 +10,7 @@ export function QuickActions() {
     { label: "Review Cards", to: "/review", emoji: "🧠" },
     { label: "Feynman", to: "/search", emoji: "💬" },
     { label: "Search", to: "/search", emoji: "🔍" },
+    { label: "Research", to: "/research", emoji: "🔬" },
   ] as const;
 
   return (

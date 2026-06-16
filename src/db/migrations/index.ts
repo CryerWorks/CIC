@@ -11,6 +11,7 @@ import { m0009Rag } from "./m0009_rag";
 import { m0010FeynmanGaps } from "./m0010_feynman_gaps";
 import { m0011QuizSessions } from "./m0011_quiz_sessions";
 import { m0012CourseDependencies } from "./m0012_course_dependencies";
+import { m0013Research } from "./m0013_research";
 
 /**
  * Ordered migration registry — the single linear history the runner applies. Append new
@@ -29,4 +30,5 @@ export const migrations: Migration[] = [
   m0010FeynmanGaps,
   m0011QuizSessions,
   m0012CourseDependencies,
+  m0013Research,
 ];
