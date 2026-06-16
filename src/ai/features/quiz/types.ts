@@ -6,7 +6,15 @@ export interface QuizQuestion {
   answer: string;
 }
 
-/** Self-rating a learner picks after answer reveal */
+/** AI evaluation of a learner's answer */
+export interface AnswerEvaluation {
+  /** Score from AI evaluation */
+  score: "correct" | "partial" | "missed";
+  /** Explanation of what was correct and what was missed */
+  explanation: string;
+}
+
+/** Self-rating a learner picks after answer reveal (deprecated — replaced by AI evaluation) */
 export type SelfRating = "got-it" | "close" | "missed";
 
 /** In-memory state of an active quiz session */
@@ -23,6 +31,7 @@ export type QuizStatus =
   | "idle"
   | "generating"
   | "answering"
+  | "evaluating"
   | "revealing"
   | "summary"
   | "error";

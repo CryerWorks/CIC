@@ -13,6 +13,7 @@ import { m0011QuizSessions } from "./m0011_quiz_sessions";
 import { m0012CourseDependencies } from "./m0012_course_dependencies";
 import { m0013Research } from "./m0013_research";
 import { m0014SessionSources } from "./m0014_session_sources";
+import { m0015CardBacks } from "./m0015_card_backs";
 
 /**
  * Ordered migration registry — the single linear history the runner applies. Append new
@@ -33,4 +34,5 @@ export const migrations: Migration[] = [
   m0012CourseDependencies,
   m0013Research,
   m0014SessionSources,
+  m0015CardBacks,
 ];

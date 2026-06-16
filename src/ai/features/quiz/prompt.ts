@@ -1,4 +1,5 @@
 import { QUIZ_SYSTEM_PROMPT } from "../../prompts/quiz";
+import type { AnswerEvaluation } from "./types";
 
 /** Input for buildQuizPrompt */
 export interface QuizPromptInput {
@@ -70,4 +71,60 @@ export function parseQuizResponse(text: string): Array<{ question: string; answe
   }
 
   return questions;
+}
+
+/** Input for buildEvaluationPrompt */
+export interface EvaluationPromptInput {
+  question: string;
+  learnerAnswer: string;
+  referenceAnswer: string;
+}
+
+/**
+ * Build the message array for AI evaluation of a learner's answer.
+ */
+export function buildEvaluationPrompt(input: EvaluationPromptInput) {
+  const { question, learnerAnswer, referenceAnswer } = input;
+
+  const systemContent = `${QUIZ_SYSTEM_PROMPT}
+
+You are now in EVALUATION MODE. You MUST evaluate the learner's answer against the reference answer.
+
+Question: ${question}
+Reference answer: ${referenceAnswer}
+Learner's answer: ${learnerAnswer}
+
+Score their answer as one of:
+- "correct" — the learner captured the key points from the reference
+- "partial" — the learner got some points but missed important ones
+- "missed" — the learner was significantly wrong or omitted key information
+
+Then provide a brief explanation of what was correct and what was missed.`;
+
+  return [
+    { role: "system" as const, content: systemContent },
+    { role: "user" as const, content: `Evaluate my answer to: "${question}"
+
+My answer: ${learnerAnswer}
+
+Reference answer: ${referenceAnswer}` },
+  ];
+}
+
+/**
+ * Parse AI evaluation response into an AnswerEvaluation.
+ */
+export function parseEvaluation(text: string): AnswerEvaluation {
+  // Default to "missed" if parsing fails
+  const defaultEval: AnswerEvaluation = { score: "missed", explanation: "Could not parse AI evaluation." };
+
+  const scoreMatch = text.match(/Score:\s*(correct|partial|missed)/i);
+  const explanationMatch = text.match(/Explanation:\s*([\s\S]+)/i);
+
+  if (!scoreMatch) return defaultEval;
+
+  return {
+    score: scoreMatch[1].toLowerCase() as "correct" | "partial" | "missed",
+    explanation: explanationMatch?.[1]?.trim() ?? "No explanation provided.",
+  };
 }

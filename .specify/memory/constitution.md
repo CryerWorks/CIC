@@ -42,8 +42,10 @@ The platform exists to make evidence-based learning easier to *practice*, not to
 - Pretest answers (F2.5) are *expected* to be wrong; the UI must frame errorful generation as the goal, not pressure the user to "be right".
 - Calibration confidence ratings (F3.5) have **no default value** — the user must register their own. An autofilled "3" defeats the mechanism.
 - Variability of surface form (F5/F6/F10) is a design requirement, not optional polish — same skill, different framings.
+- **Memory cards are Q+A recall pairs.** Every card MUST have both a `front` (question/prompt) AND a `back` (correct answer). The back is the target of retrieval — never blank, never optional. Scaffold-only generation applies to course notes, not to memory cards.
+- **Density: 3-5 cards per reading source per session.** Cards test specific recall from each source; they are not 3-per-course abstractions.
 
-**Rationale:** Brown/Roediger/McDaniel + Bjork's "desirable difficulties" literature. The *illusion of competence* is the failure mode this entire platform exists to prevent.
+**Rationale:** Brown/Roediger/McDaniel + Bjork's "desirable difficulties" literature. The *illusion of competence* is the failure mode this entire platform exists to prevent. Memory cards without answers defeat retrieval — the back IS the retrieval target.
 
 ### IV. Interface-First, Deep Modules (Pocock Pattern)
 

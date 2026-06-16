@@ -47,6 +47,7 @@ const sampleBlueprintJson = `Here is the course structure I propose:
   "cardSeeds": [
     {
       "front": "What is the epsilon-delta definition of a limit?",
+      "back": "For every ε > 0, there exists δ > 0 such that...",
       "milestoneIndex": 0
     }
   ],
@@ -95,10 +96,12 @@ const modeBResponse = `\`\`\`json
   "cardSeeds": [
     {
       "front": "What is the row echelon form?",
+      "back": "A matrix form where leading coefficients are 1 and shifted right",
       "milestoneIndex": 0
     },
     {
       "front": "What defines a vector space?",
+      "back": "A set closed under addition and scalar multiplication satisfying 8 axioms",
       "milestoneIndex": 1
     }
   ],

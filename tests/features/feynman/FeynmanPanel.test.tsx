@@ -68,7 +68,7 @@ describe("FeynmanPanel", () => {
     );
 
     expect(screen.getByText("Feynman Tutor")).toBeTruthy();
-    expect(screen.getByText(/Explain a concept/)).toBeTruthy();
+    expect(screen.getByText(/Feynman Tutor will ask/)).toBeTruthy();
     expect(screen.getByPlaceholderText("Explain a concept…")).toBeTruthy();
   });
 

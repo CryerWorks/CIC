@@ -1,7 +1,8 @@
 import type { FeynmanMessage, FeynmanGap, GapSaveTarget } from "./types";
+import type { SessionSource } from "../blueprint/types";
 import type { ChatMessage, ChatOptions } from "../../provider";
 import type { AIRole } from "../../config";
-import { buildSocraticPrompt } from "./prompt";
+import { buildSocraticPrompt, buildInterrogationPrompt } from "./prompt";
 
 interface SearchFn {
   (query: string, k?: number): Promise<Array<{ chunk: { sourceTitle: string; textContent: string; headingPath: string | null; sourceKind: string; sourceId: string }; distance: number; resourceId: string | null; locator: string }>>;
@@ -43,6 +44,36 @@ export class FeynmanTutorImpl {
     this._messages = [];
     this._scope = scope ?? null;
     this._isActive = false;
+  }
+
+  async *startInterrogation(sources: SessionSource[]): AsyncIterable<string> {
+    this.startConversation(this._scope ?? undefined);
+    this._isActive = true;
+
+    // Format sources as context for the AI
+    const sourceDescriptions = sources.map((s, i) =>
+      `[${i + 1}] ${s.title} (${s.type}, ${s.estimatedMinutes} min) — ${s.url}`,
+    );
+
+    // Build the interrogation prompt
+    const chatMessages = buildInterrogationPrompt(sourceDescriptions);
+
+    // Stream the AI's opening question
+    const tutorMsg: FeynmanMessage = { role: "tutor", content: "", isStreaming: true };
+    this._messages.push(tutorMsg);
+
+    try {
+      for await (const chunk of this.router.chat("reasoning", chatMessages, { containsVaultContent: true })) {
+        const delta = chunk.delta ?? "";
+        tutorMsg.content += delta;
+        yield delta;
+      }
+    } catch (e) {
+      tutorMsg.content += `\n\n_Error: ${e instanceof Error ? e.message : "AI provider unavailable"}_`;
+    } finally {
+      tutorMsg.isStreaming = false;
+      this._isActive = false;
+    }
   }
 
   getMessages(): FeynmanMessage[] {

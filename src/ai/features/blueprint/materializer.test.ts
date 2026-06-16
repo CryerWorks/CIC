@@ -35,8 +35,8 @@ function makeBlueprint(overrides: Partial<CourseBlueprint> = {}): CourseBlueprin
       { order: 1, capability: "Prove continuity of functions", description: "Continuous functions", difficulty: 3 },
     ],
     cardSeeds: [
-      { front: "What is the epsilon-delta definition of a limit?", milestoneIndex: 0 },
-      { front: "What does it mean for a function to be continuous?", milestoneIndex: 1 },
+      { front: "What is the epsilon-delta definition of a limit?", back: "For every epsilon > 0 there exists a delta > 0...", milestoneIndex: 0 },
+      { front: "What does it mean for a function to be continuous?", back: "A function is continuous if for every point c, the limit equals f(c)", milestoneIndex: 1 },
     ],
     retrievalQs: [
       { question: "How do you prove a limit exists?", milestoneIndex: 0, answerSnippet: "Use epsilon-delta" },
@@ -91,10 +91,12 @@ describe("materializeBlueprint", () => {
       "What does it mean for a function to be continuous?",
       "What is the epsilon-delta definition of a limit?",
     ]);
-    // All cards have blank backs (scaffold-only)
-    for (const card of cards) {
-      expect(card.back).toBe("");
-    }
+    // Cards have real backs (memory Q+A pairs)
+    const backs = cards.map((c) => c.back).sort();
+    expect(backs).toEqual([
+      "A function is continuous if for every point c, the limit equals f(c)",
+      "For every epsilon > 0 there exists a delta > 0...",
+    ]);
 
     // Verify MOC exists
     const exists = await tv.reader.exists(result.mocPath);

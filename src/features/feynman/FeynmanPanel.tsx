@@ -7,6 +7,7 @@
  * - Typing indicator while AI generates
  * - Summarize Gaps button after 2+ turns
  * - Close with confirmation dialog when unsaved gaps exist (FR-018)
+ * - AI-driven interrogation mode: auto-launches with session sources
  */
 import { useState, useRef, useEffect, useCallback, type FormEvent } from "react";
 import { Button } from "../../components/ui/Button";
@@ -14,14 +15,28 @@ import { FeynmanMessage } from "./FeynmanMessage";
 import { QuizPanel } from "../quiz/QuizPanel";
 import { useFeynmanTutor } from "../../ai/features/feynman/hooks/useFeynmanTutor";
 import type { GapSaveTarget } from "../../ai/features/feynman/types";
+import type { SessionSource } from "../../ai/features/feynman/tutor";
 
 interface FeynmanPanelProps {
   gapSaveTarget: GapSaveTarget;
+  /** Session sources for AI-driven interrogation (auto-starts if provided). */
+  sessionSources?: SessionSource[];
   onClose: () => void;
 }
 
-export function FeynmanPanel({ gapSaveTarget, onClose }: FeynmanPanelProps) {
-  const { messages, isActive, error, sendMessage, summarizeGaps, saveGaps, reset } = useFeynmanTutor(
+export function FeynmanPanel({ gapSaveTarget, sessionSources, onClose }: FeynmanPanelProps) {
+  const {
+    messages,
+    isActive,
+    isInterrogating,
+    currentSourceName,
+    error,
+    sendMessage,
+    startInterrogation,
+    summarizeGaps,
+    saveGaps,
+    reset,
+  } = useFeynmanTutor(
     gapSaveTarget.courseId ? { courseId: gapSaveTarget.courseId } : undefined,
   );
 
@@ -33,6 +48,7 @@ export function FeynmanPanel({ gapSaveTarget, onClose }: FeynmanPanelProps) {
   const [showQuiz, setShowQuiz] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const startedRef = useRef(false);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -43,6 +59,14 @@ export function FeynmanPanel({ gapSaveTarget, onClose }: FeynmanPanelProps) {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Auto-start interrogation when session sources are provided
+  useEffect(() => {
+    if (sessionSources && sessionSources.length > 0 && !startedRef.current && messages.length === 0) {
+      startedRef.current = true;
+      void startInterrogation(sessionSources);
+    }
+  }, [sessionSources, startInterrogation, messages.length]);
 
   const handleSend = useCallback(
     async (e?: FormEvent) => {
@@ -100,6 +124,11 @@ export function FeynmanPanel({ gapSaveTarget, onClose }: FeynmanPanelProps) {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-line px-4 py-3">
           <h2 className="text-sm font-semibold text-text">Feynman Tutor</h2>
+          {currentSourceName && (
+            <span className="max-w-[200px] truncate text-xs text-ai" title={currentSourceName}>
+              Source: {currentSourceName}
+            </span>
+          )}
           <button
             onClick={handleClose}
             className="rounded-sm px-2 py-1 text-xs text-text-dim hover:bg-panel-raised hover:text-text transition-colors"
@@ -111,14 +140,33 @@ export function FeynmanPanel({ gapSaveTarget, onClose }: FeynmanPanelProps) {
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto px-4 py-3">
-          {messages.length === 0 ? (
+          {/* Loading state: AI preparing interrogation */}
+          {isInterrogating && messages.length === 0 && (
+            <div className="flex h-full flex-col items-center justify-center gap-3">
+              <div className="inline-block size-6 animate-spin rounded-full border-2 border-ai border-t-transparent" />
+              <p className="text-center text-sm text-ai">
+                AI is preparing questions from your reading…
+              </p>
+              {currentSourceName && (
+                <p className="max-w-[300px] truncate text-xs text-text-dim">
+                  Analyzing: {currentSourceName}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Empty state (no interrogation, no messages) */}
+          {!isInterrogating && messages.length === 0 && (
             <div className="flex h-full items-center justify-center">
               <p className="text-center text-sm text-text-dim">
-                Explain a concept you're learning, and the Feynman Tutor will ask Socratic questions
+                The Feynman Tutor will ask Socratic questions based on your session readings
                 to deepen your understanding. Type your question below to start.
               </p>
             </div>
-          ) : (
+          )}
+
+          {/* Messages */}
+          {messages.length > 0 && (
             <div className="flex flex-col gap-3">
               {messages.map((msg, i) => (
                 <FeynmanMessage key={i} message={msg} />
@@ -203,12 +251,12 @@ export function FeynmanPanel({ gapSaveTarget, onClose }: FeynmanPanelProps) {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isActive ? "Waiting for response…" : "Explain a concept…"}
-              disabled={isActive}
+              placeholder={isActive ? "Waiting for response…" : isInterrogating ? "AI is analyzing your readings…" : "Explain a concept…"}
+              disabled={isActive || isInterrogating}
               className="flex-1 rounded-sm border border-line bg-surface-sunken px-3 py-2 text-sm text-text placeholder:text-text-dim focus:outline-none focus:ring-2 focus:ring-brand disabled:opacity-50"
               aria-label="Message input"
             />
-            <Button type="submit" disabled={!input.trim() || isActive} size="md">
+            <Button type="submit" disabled={!input.trim() || isActive || isInterrogating} size="md">
               Send
             </Button>
           </form>

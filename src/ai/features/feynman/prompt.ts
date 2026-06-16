@@ -51,3 +51,28 @@ export function buildSocraticPrompt(input: PromptInput) {
 
   return chatMessages;
 }
+
+/**
+ * Build the message array for AI-driven interrogation start.
+ *
+ * Injects session sources (titles, URLs, types) into the Socratic prompt
+ * and asks the AI to pick a concept and open with a question.
+ * Pure function — no side effects, no I/O.
+ */
+export function buildInterrogationPrompt(sourceDescriptions: string[]) {
+  const sourcesText = sourceDescriptions.join("\n");
+
+  const systemContent = `${SOCRATIC_SYSTEM_PROMPT}
+
+SESSION SOURCES (the learner has completed these readings/watchings):
+--- BEGIN SOURCES ---
+${sourcesText}
+--- END SOURCES ---
+
+From the session sources above, pick ONE key concept the learner should understand. Ask them to explain it to you as if you're a beginner. Open directly with your question — do NOT explain the concept yourself. Reference which source the concept comes from.`;
+
+  return [
+    { role: "system" as const, content: systemContent },
+    { role: "user" as const, content: "I have completed the session readings. What concept would you like me to explain?" },
+  ];
+}

@@ -1,7 +1,8 @@
 /**
- * QuizPanel — Full quiz experience: generate, answer, reveal, self-rate, summary, spawn cards.
+ * QuizPanel — Full quiz experience: generate, answer, AI-evaluate, reveal, summary, spawn cards.
  *
  * Consumes the `useQuiz()` hook exclusively — never imports QuizGenerator directly (Constitution IV).
+ * Self-rating is replaced by AI evaluation (Constitution III).
  */
 import { useCallback, useState } from "react";
 import { useQuiz } from "../../ai/features/quiz/hooks/useQuiz";
@@ -24,14 +25,14 @@ export function QuizPanel({ topic, courseId, count = 5, onClose }: QuizPanelProp
   const {
     questions,
     currentIndex,
-    ratings,
+    evaluations,
     learnerAnswers,
     status,
     error,
     spawnResults,
     generate,
     submitAnswer,
-    submitRating,
+    goToNext,
     spawnCards,
     reset,
   } = useQuiz();
@@ -46,17 +47,14 @@ export function QuizPanel({ topic, courseId, count = 5, onClose }: QuizPanelProp
 
   const handleSubmitAnswer = useCallback(
     (text: string) => {
-      submitAnswer(text);
+      void submitAnswer(text);
     },
     [submitAnswer],
   );
 
-  const handleRate = useCallback(
-    (rating: "got-it" | "close" | "missed") => {
-      void submitRating(rating);
-    },
-    [submitRating],
-  );
+  const handleNext = useCallback(() => {
+    goToNext();
+  }, [goToNext]);
 
   const handleSpawnCards = useCallback(async () => {
     setSpawning(true);
@@ -136,14 +134,23 @@ export function QuizPanel({ topic, courseId, count = 5, onClose }: QuizPanelProp
             />
           )}
 
-          {/* Revealing state — show answer comparison */}
-          {status === "revealing" && questions[currentIndex] && (
+          {/* Evaluating state — AI is evaluating the answer */}
+          {status === "evaluating" && (
+            <div className="flex h-full flex-col items-center justify-center gap-3">
+              <div className="inline-block size-6 animate-spin rounded-full border-2 border-ai border-t-transparent" />
+              <p className="text-sm text-text-dim">AI is evaluating your answer…</p>
+            </div>
+          )}
+
+          {/* Revealing state — show AI evaluation */}
+          {status === "revealing" && questions[currentIndex] && evaluations.get(currentIndex) && (
             <AnswerReveal
               question={questions[currentIndex]}
               learnerAnswer={learnerAnswers.get(currentIndex) ?? ""}
+              evaluation={evaluations.get(currentIndex)!}
               index={currentIndex}
               total={questions.length}
-              onRate={handleRate}
+              onNext={handleNext}
             />
           )}
 
@@ -151,7 +158,7 @@ export function QuizPanel({ topic, courseId, count = 5, onClose }: QuizPanelProp
           {status === "summary" && (
             <QuizSummary
               questions={questions}
-              ratings={ratings}
+              evaluations={evaluations}
               learnerAnswers={learnerAnswers}
               spawnResults={spawnResults}
               onSpawnCards={handleSpawnCards}
@@ -181,7 +188,7 @@ export function QuizPanel({ topic, courseId, count = 5, onClose }: QuizPanelProp
 
       {/* Close confirmation dialog */}
       {showCloseConfirm && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div
             className="rounded-lg border border-line bg-panel p-6 shadow-xl"
             role="dialog"

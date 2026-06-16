@@ -58,8 +58,8 @@ const VALID_AI_RESPONSE = `Here are the course blueprints:
         { "order": 1, "capability": "Solve the Schrödinger equation for simple potentials", "description": "Apply the Schrödinger equation to infinite wells and barriers", "difficulty": 3 }
       ],
       "cardSeeds": [
-        { "front": "What is wave-particle duality?", "milestoneIndex": 0 },
-        { "front": "Write the time-independent Schrödinger equation", "milestoneIndex": 1 }
+        { "front": "What is wave-particle duality?", "back": "The concept that quantum entities exhibit both wave and particle properties", "milestoneIndex": 0 },
+        { "front": "Write the time-independent Schrödinger equation", "back": "Hψ = Eψ", "milestoneIndex": 1 }
       ],
       "retrievalQs": [
         { "question": "Explain the double-slit experiment", "milestoneIndex": 0, "answerSnippet": "Shows wave-particle duality of quantum entities" }

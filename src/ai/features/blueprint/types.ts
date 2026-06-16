@@ -29,6 +29,8 @@ export interface SessionSource {
 export interface SessionCardSeed {
   /** Card front (question/prompt). */
   front: string;
+  /** Card back (correct answer for memory recall). Required — cards are Q+A pairs. */
+  back: string;
   /** Which source in the session's sources[] this card refers to. */
   sourceIndex: number;
 }
@@ -71,14 +73,14 @@ export interface MilestoneSeed {
   projects?: ProjectSeed[];
 }
 
-/** A suggested card seed — front only, back is blank (scaffold-only, v1). */
+/** A card seed — a memory recall Q+A pair. */
 export interface CardSeed {
   /** The card front (question/prompt). */
   front: string;
+  /** The card back (correct answer for memory recall). Required — cards are Q+A pairs. */
+  back: string;
   /** Which milestone this card supports (index into milestones[]). */
   milestoneIndex: number;
-  /** Optional hint for the back that the AI would generate in a future full-draft pass. */
-  backHint?: string;
 }
 
 /** A retrieval practice question for the course (used during materialization for card seeds). */

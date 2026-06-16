@@ -1,12 +1,12 @@
 /**
- * QuizSummary — Shows quiz results (self-ratings per question) and a button
+ * QuizSummary — Shows quiz results (AI evaluations per question) and a button
  * to spawn cards from missed items.
  */
-import type { QuizQuestion, SelfRating, SpawnResult } from "../../ai/features/quiz/types";
+import type { QuizQuestion, AnswerEvaluation, SpawnResult } from "../../ai/features/quiz/types";
 
 interface QuizSummaryProps {
   questions: QuizQuestion[];
-  ratings: Map<number, SelfRating>;
+  evaluations: Map<number, AnswerEvaluation>;
   learnerAnswers: Map<number, string>;
   spawnResults: SpawnResult[] | null;
   onSpawnCards: () => void;
@@ -14,31 +14,37 @@ interface QuizSummaryProps {
   spawning?: boolean;
 }
 
-const ratingLabel: Record<SelfRating, string> = {
-  "got-it": "✅ Got it",
-  close: "🟡 Close",
+const evalLabel: Record<string, string> = {
+  correct: "✅ Correct",
+  partial: "🟡 Partial",
   missed: "❌ Missed",
 };
 
-const ratingColor: Record<SelfRating, string> = {
-  "got-it": "text-success",
-  close: "text-warn",
+const evalColor: Record<string, string> = {
+  correct: "text-success",
+  partial: "text-warn",
   missed: "text-danger",
+};
+
+const evalBg: Record<string, string> = {
+  correct: "border-success/30 bg-success/10",
+  partial: "border-warn/30 bg-warn/10",
+  missed: "border-danger/30 bg-danger/10",
 };
 
 export function QuizSummary({
   questions,
-  ratings,
+  evaluations,
   learnerAnswers,
   spawnResults,
   onSpawnCards,
   onReset,
   spawning = false,
 }: QuizSummaryProps) {
-  const missedCount = questions.filter((_, i) => ratings.get(i) === "missed").length;
-  const gotItCount = questions.filter((_, i) => ratings.get(i) === "got-it").length;
-  const closeCount = questions.filter((_, i) => ratings.get(i) === "close").length;
-  const allRated = questions.every((_, i) => ratings.has(i));
+  const missedCount = questions.filter((_, i) => evaluations.get(i)?.score === "missed").length;
+  const correctCount = questions.filter((_, i) => evaluations.get(i)?.score === "correct").length;
+  const partialCount = questions.filter((_, i) => evaluations.get(i)?.score === "partial").length;
+  const allEvaluated = questions.every((_, i) => evaluations.has(i));
 
   return (
     <div className="flex flex-col gap-4">
@@ -47,12 +53,12 @@ export function QuizSummary({
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-md border border-success/30 bg-success/10 p-3 text-center">
-          <p className="text-lg font-bold text-success">{gotItCount}</p>
-          <p className="text-xs text-text-dim">Got it</p>
+          <p className="text-lg font-bold text-success">{correctCount}</p>
+          <p className="text-xs text-text-dim">Correct</p>
         </div>
         <div className="rounded-md border border-warn/30 bg-warn/10 p-3 text-center">
-          <p className="text-lg font-bold text-warn">{closeCount}</p>
-          <p className="text-xs text-text-dim">Close</p>
+          <p className="text-lg font-bold text-warn">{partialCount}</p>
+          <p className="text-xs text-text-dim">Partial</p>
         </div>
         <div className="rounded-md border border-danger/30 bg-danger/10 p-3 text-center">
           <p className="text-lg font-bold text-danger">{missedCount}</p>
@@ -61,26 +67,31 @@ export function QuizSummary({
       </div>
 
       {/* Detailed results */}
-      {allRated && (
+      {allEvaluated && (
         <div className="flex flex-col gap-2">
           <h4 className="text-xs font-semibold text-text-dim">Details</h4>
           {questions.map((q, i) => {
-            const rating = ratings.get(i);
+            const eval_ = evaluations.get(i);
             const answer = learnerAnswers.get(i);
             return (
               <div
                 key={i}
-                className="rounded-md border border-line bg-panel-raised p-3"
+                className={`rounded-md border ${evalBg[eval_?.score ?? "missed"]} p-3`}
               >
                 <p className="mb-1 text-sm text-text">{q.question}</p>
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex flex-col gap-1 text-xs">
                   <span className="text-text-dim">
                     Your answer: {answer ? answer : <span className="italic">(empty)</span>}
                   </span>
-                  {rating && (
-                    <span className={`font-medium ${ratingColor[rating]}`}>
-                      {ratingLabel[rating]}
-                    </span>
+                  {eval_ && (
+                    <>
+                      <span className={`font-medium ${evalColor[eval_.score]}`}>
+                        {evalLabel[eval_.score]}
+                      </span>
+                      {eval_.explanation && (
+                        <span className="text-text-dim">{eval_.explanation}</span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -90,7 +101,7 @@ export function QuizSummary({
       )}
 
       {/* Spawn cards from missed items */}
-      {allRated && missedCount > 0 && !spawnResults && (
+      {allEvaluated && missedCount > 0 && !spawnResults && (
         <button
           onClick={onSpawnCards}
           disabled={spawning}

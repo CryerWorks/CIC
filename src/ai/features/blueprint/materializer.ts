@@ -6,7 +6,7 @@
  * 1. Resolves or creates the domain (findOrCreateDomainByName)
  * 2. Creates the course row (createCourse)
  * 3. Creates milestone rows (createMilestone)
- * 4. Creates suggested cards with blank backs (createCard)
+ * 4. Creates suggested memory cards with Q+A pairs (createCard)
  * 5. (V2) Creates sessions with per-source cards and projects per milestone
  * 6. Renders and writes the MOC via the existing materializeCourse
  *
@@ -104,12 +104,12 @@ export async function materializeBlueprint(
       projectCount += projectIds.length;
     }
 
-    // 5. Create suggested cards (front only, blank back)
+    // 5. Create suggested cards (memory Q+A pairs)
     for (const cs of blueprint.cardSeeds) {
       await createCard(db, {
         courseId: course.id,
         front: cs.front,
-        back: "", // Scaffold-only: blank backs (FR-015)
+        back: cs.back,
       });
       cardCount++;
     }
@@ -215,7 +215,7 @@ async function materializeSessions(
       await createCard(db, {
         courseId,
         front: sc.front,
-        back: "",
+        back: sc.back,
       });
       sessionCardCount++;
     }

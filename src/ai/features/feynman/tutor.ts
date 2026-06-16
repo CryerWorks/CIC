@@ -1,4 +1,8 @@
 import type { FeynmanGap, FeynmanMessage, GapSaveTarget } from "./types";
+import type { SessionSource as BlueprintSessionSource } from "../blueprint/types";
+
+/** A session source for the Feynman tutor (from session readings/watchings). */
+export type SessionSource = BlueprintSessionSource;
 
 /**
  * Seam interface for the Feynman/Socratic tutor.
@@ -16,6 +20,13 @@ export interface FeynmanTutor {
    * Each yielded string is a token to append to the in-progress message.
    */
   sendMessage(text: string): AsyncIterable<string>;
+
+  /**
+   * Start an AI-driven interrogation from session sources.
+   * The AI reads the provided session sources, picks a key concept,
+   * and opens with a question. Returns the streaming opening message.
+   */
+  startInterrogation(sources: SessionSource[]): AsyncIterable<string>;
 
   /** Get the current conversation messages (for rendering). */
   getMessages(): FeynmanMessage[];

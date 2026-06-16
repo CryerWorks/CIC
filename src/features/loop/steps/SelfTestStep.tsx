@@ -1,15 +1,27 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { DailyLoop } from "../useDailyLoop";
 import { FIELD } from "./field";
 import { FeynmanPanel } from "../../feynman/FeynmanPanel";
 import { QuizPanel } from "../../quiz/QuizPanel";
 import { Button } from "../../../components/ui";
+import type { SessionSource } from "../../../ai/features/feynman/tutor";
 
-/** Step 6 — self-test. A manual stand-in for the future AI Feynman/Socratic panel (F4, Phase 3).
- *  Captured for the writeup; never graded (Constitution III). */
+/** Step 6 — self-test. Feynman interrogation is AI-driven, Quiz is AI-evaluated. */
 export function SelfTestStep({ loop }: { loop: DailyLoop }) {
   const [showTutor, setShowTutor] = useState(false);
   const [showQuiz, setShowQuiz] = useState(false);
+
+  // Build session sources from the loop's assignments for AI-driven Feynman interrogation
+  const sessionSources = useMemo<SessionSource[]>(() => {
+    return loop.assignments
+      .filter((a) => a.resource)
+      .map((a) => ({
+        url: a.resource?.url ?? "",
+        title: a.resource?.title ?? a.resourceId,
+        type: (a.kind === "watch" || a.kind === "listen" ? "watching" : "reading") as "reading" | "watching",
+        estimatedMinutes: 20,
+      }));
+  }, [loop.assignments]);
 
   return (
     <div className="flex flex-col gap-2 text-sm">
@@ -39,6 +51,7 @@ export function SelfTestStep({ loop }: { loop: DailyLoop }) {
             notePath: `Sessions/${loop.objective || "session"}.md`,
             courseId: undefined,
           }}
+          sessionSources={sessionSources.length > 0 ? sessionSources : undefined}
           onClose={() => setShowTutor(false)}
         />
       )}

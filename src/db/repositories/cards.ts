@@ -43,6 +43,21 @@ export async function createCard(
   return CardSchema.parse(row);
 }
 
+/**
+ * Default back text for cards that were created before backs were required.
+ * This ensures existing data doesn't break when displayed.
+ */
+const LEGACY_CARD_BACK_PLACEHOLDER = "[back not yet provided]";
+
+/**
+ * Ensure a card has a meaningful back field. If the card's back is empty or
+ * whitespace-only (legacy cards created before backs were required), returns
+ * the placeholder text.
+ */
+export function ensureCardBack(back: string): string {
+  return back.trim().length > 0 ? back : LEGACY_CARD_BACK_PLACEHOLDER;
+}
+
 export async function getCard(db: SqlExecutor, id: string): Promise<Card | null> {
   const rows = await selectParsed(db, CardSchema, "SELECT * FROM cards WHERE id = ?", [id]);
   return rows[0] ?? null;

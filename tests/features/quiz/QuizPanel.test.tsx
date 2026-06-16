@@ -6,7 +6,7 @@ import { QuizPanel } from "../../../src/features/quiz/QuizPanel";
 // Mock the useQuiz hook
 const mockGenerate = vi.fn();
 const mockSubmitAnswer = vi.fn();
-const mockSubmitRating = vi.fn();
+const mockGoToNext = vi.fn();
 const mockSpawnCards = vi.fn();
 const mockReset = vi.fn();
 
@@ -16,14 +16,14 @@ function createMockState(overrides: Record<string, unknown> = {}) {
   return {
     questions: [],
     currentIndex: 0,
-    ratings: new Map(),
+    evaluations: new Map(),
     learnerAnswers: new Map(),
     status: "idle",
     error: null,
     spawnResults: null,
     generate: mockGenerate,
     submitAnswer: mockSubmitAnswer,
-    submitRating: mockSubmitRating,
+    goToNext: mockGoToNext,
     spawnCards: mockSpawnCards,
     reset: mockReset,
     ...overrides,
@@ -68,6 +68,13 @@ describe("QuizPanel", () => {
     expect(screen.getByText("Generating quiz questions…")).toBeTruthy();
   });
 
+  it("shows evaluating state", () => {
+    mockState = createMockState({ status: "evaluating" });
+    render(<QuizPanel {...defaultProps} />);
+
+    expect(screen.getByText("AI is evaluating your answer…")).toBeTruthy();
+  });
+
   it("shows error state with retry button", () => {
     mockState = createMockState({ status: "error", error: "AI unavailable" });
     render(<QuizPanel {...defaultProps} />);
@@ -105,11 +112,15 @@ describe("QuizPanel", () => {
     expect(mockSubmitAnswer).toHaveBeenCalledWith("My answer");
   });
 
-  it("shows revealing state with self-rating buttons", () => {
+  it("shows revealing state with AI evaluation", () => {
     mockState = createMockState({
       status: "revealing",
-      questions: [{ question: "Q1?", answer: "A1." }],
+      questions: [
+        { question: "Q1?", answer: "A1." },
+        { question: "Q2?", answer: "A2." },
+      ],
       currentIndex: 0,
+      evaluations: new Map([[0, { score: "partial", explanation: "You missed the key point about limits." }]]),
       learnerAnswers: new Map([[0, "My answer"]]),
     });
     render(<QuizPanel {...defaultProps} />);
@@ -118,22 +129,28 @@ describe("QuizPanel", () => {
     expect(screen.getByText("A1.")).toBeTruthy();
     expect(screen.getByText("Your answer")).toBeTruthy();
     expect(screen.getByText("My answer")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Got it/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Missed/ })).toBeTruthy();
+    expect(screen.getByText("Partial")).toBeTruthy();
+    expect(screen.getByText("Next Question")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Got it/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Missed/ })).toBeNull();
   });
 
-  it("rating calls submitRating", () => {
+  it("next question calls goToNext", () => {
     mockState = createMockState({
       status: "revealing",
-      questions: [{ question: "Q1?", answer: "A1." }],
+      questions: [
+        { question: "Q1?", answer: "A1." },
+        { question: "Q2?", answer: "A2." },
+      ],
       currentIndex: 0,
+      evaluations: new Map([[0, { score: "correct", explanation: "Good answer." }]]),
       learnerAnswers: new Map([[0, "My answer"]]),
     });
     render(<QuizPanel {...defaultProps} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /Got it/ }));
+    fireEvent.click(screen.getByText("Next Question"));
 
-    expect(mockSubmitRating).toHaveBeenCalledWith("got-it");
+    expect(mockGoToNext).toHaveBeenCalled();
   });
 
   it("shows summary state with stats", () => {
@@ -143,9 +160,9 @@ describe("QuizPanel", () => {
         { question: "Q1?", answer: "A1." },
         { question: "Q2?", answer: "A2." },
       ],
-      ratings: new Map([
-        [0, "got-it"],
-        [1, "missed"],
+      evaluations: new Map([
+        [0, { score: "correct", explanation: "Good." }],
+        [1, { score: "missed", explanation: "Wrong." }],
       ]),
       learnerAnswers: new Map([
         [0, "Correct answer"],
@@ -155,8 +172,9 @@ describe("QuizPanel", () => {
     render(<QuizPanel {...defaultProps} />);
 
     expect(screen.getByText("Quiz Complete")).toBeTruthy();
-    expect(screen.getByText("Got it")).toBeTruthy();
+    expect(screen.getByText("Correct")).toBeTruthy();
     expect(screen.getByText("Missed")).toBeTruthy();
+    expect(screen.getByText("Partial")).toBeTruthy();
     // Should show spawn button for missed items
     expect(screen.getByText(/Create cards for 1 missed/)).toBeTruthy();
   });
@@ -165,7 +183,7 @@ describe("QuizPanel", () => {
     mockState = createMockState({
       status: "summary",
       questions: [{ question: "Q1?", answer: "A1." }],
-      ratings: new Map([[0, "missed"]]),
+      evaluations: new Map([[0, { score: "missed", explanation: "Wrong." }]]),
       learnerAnswers: new Map([[0, "Wrong"]]),
     });
     render(<QuizPanel {...defaultProps} />);
@@ -179,7 +197,7 @@ describe("QuizPanel", () => {
     mockState = createMockState({
       status: "summary",
       questions: [{ question: "Q1?", answer: "A1." }],
-      ratings: new Map([[0, "missed"]]),
+      evaluations: new Map([[0, { score: "missed", explanation: "Wrong." }]]),
       learnerAnswers: new Map([[0, "Wrong"]]),
       spawnResults: [{ question: "Q1?", success: true, cardId: "card-123" }],
     });
@@ -192,7 +210,7 @@ describe("QuizPanel", () => {
     mockState = createMockState({
       status: "summary",
       questions: [{ question: "Q1?", answer: "A1." }],
-      ratings: new Map([[0, "got-it"]]),
+      evaluations: new Map([[0, { score: "correct", explanation: "Good." }]]),
       learnerAnswers: new Map([[0, "Answer"]]),
     });
     render(<QuizPanel {...defaultProps} />);

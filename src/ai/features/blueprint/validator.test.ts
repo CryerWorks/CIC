@@ -20,7 +20,7 @@ const validBlueprint = {
     },
   ],
   cardSeeds: [
-    { front: "What is a limit?", milestoneIndex: 0 },
+    { front: "What is a limit?", back: "The value a function approaches", milestoneIndex: 0 },
   ],
   retrievalQs: [
     { question: "How to prove a limit?", milestoneIndex: 0, answerSnippet: "Use epsilon-delta" },
@@ -46,8 +46,8 @@ describe("validateBlueprint", () => {
         { order: 1, capability: "Second milestone", description: "Second desc", difficulty: 3 },
       ],
       cardSeeds: [
-        { front: "Card for first", milestoneIndex: 0 },
-        { front: "Card for second", milestoneIndex: 1 },
+        { front: "Card for first", back: "Answer for first", milestoneIndex: 0 },
+        { front: "Card for second", back: "Answer for second", milestoneIndex: 1 },
       ],
       retrievalQs: [
         { question: "Q for first", milestoneIndex: 0, answerSnippet: "Ans" },
@@ -77,7 +77,7 @@ describe("validateBlueprint", () => {
     expect(() =>
       validateBlueprint({
         ...validBlueprint,
-        cardSeeds: [{ front: "Bad card", milestoneIndex: 5 }],
+        cardSeeds: [{ front: "Bad card", back: "Bad answer", milestoneIndex: 5 }],
       }),
     ).toThrow(BlueprintValidationError);
   });

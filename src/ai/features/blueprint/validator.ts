@@ -33,6 +33,7 @@ const SessionSourceSchema = z.object({
 
 const SessionCardSeedSchema = z.object({
   front: z.string().min(1, "Card front is required").max(500),
+  back: z.string().min(1, "Card answer is required").max(500),
   sourceIndex: z.number().int().min(0),
 });
 
@@ -60,8 +61,8 @@ const MilestoneSeedSchema = z.object({
 
 const CardSeedSchema = z.object({
   front: z.string().min(1, "Card front is required").max(500),
+  back: z.string().min(1, "Card answer is required").max(500),
   milestoneIndex: z.number().int().min(0),
-  backHint: z.string().max(300).optional(),
 });
 
 const RetrievalQSchema = z.object({

@@ -1,7 +1,7 @@
-import type { QuizQuestion } from "./types";
+import type { QuizQuestion, AnswerEvaluation } from "./types";
 import type { ChatMessage, ChatOptions } from "../../provider";
 import type { AIRole } from "../../config";
-import { buildQuizPrompt, parseQuizResponse } from "./prompt";
+import { buildQuizPrompt, buildEvaluationPrompt, parseQuizResponse, parseEvaluation } from "./prompt";
 
 /** Shape of the chat chunk yielded by the router. */
 interface ChatChunkLike {
@@ -23,6 +23,12 @@ export interface QuizGenerator {
     previousQuestions?: string[],
     count?: number,
   ): Promise<QuizQuestion[]>;
+
+  /**
+   * Evaluate a learner's answer against the reference answer using AI.
+   * Returns score (correct/partial/missed) and an explanation of gaps.
+   */
+  evaluateAnswer(question: string, learnerAnswer: string, referenceAnswer: string): Promise<AnswerEvaluation>;
 }
 
 /** Options for constructing QuizGeneratorImpl. */
@@ -74,5 +80,32 @@ export class QuizGeneratorImpl implements QuizGenerator {
     }
 
     return parsed;
+  }
+
+  async evaluateAnswer(
+    question: string,
+    learnerAnswer: string,
+    referenceAnswer: string,
+  ): Promise<AnswerEvaluation> {
+    const messages = buildEvaluationPrompt({
+      question,
+      learnerAnswer,
+      referenceAnswer,
+    });
+
+    let fullText = "";
+    try {
+      for await (const chunk of this.opts.router.chat("reasoning", messages, {
+        containsVaultContent: true,
+      })) {
+        fullText += chunk.delta ?? "";
+      }
+    } catch (e) {
+      throw new Error(
+        `Answer evaluation failed: ${e instanceof Error ? e.message : "AI provider unavailable"}`,
+      );
+    }
+
+    return parseEvaluation(fullText);
   }
 }

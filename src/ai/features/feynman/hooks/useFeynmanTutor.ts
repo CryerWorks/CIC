@@ -15,6 +15,7 @@ import { FeynmanTutorImpl } from "../tutorImpl";
 import { writeGapsToVault } from "../../../../features/feynman/gapWriter";
 import { insertGaps } from "../../../../db";
 import type { FeynmanGap, FeynmanMessage, GapSaveTarget } from "../types";
+import type { SessionSource } from "../tutor";
 
 export function useFeynmanTutor(scope?: { courseId?: string }) {
   const router = useAIRouter();
@@ -25,6 +26,8 @@ export function useFeynmanTutor(scope?: { courseId?: string }) {
   const db = dbState.status === "ready" ? dbState.db : null;
   const [messages, setMessages] = useState<FeynmanMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isInterrogating, setIsInterrogating] = useState(false);
+  const [currentSourceName, setCurrentSourceName] = useState<string | null>(null);
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
 
@@ -91,8 +94,10 @@ export function useFeynmanTutor(scope?: { courseId?: string }) {
       }
       setError(null);
 
-      // Start conversation with the current scope
-      tutor.startConversation(scopeRef.current);
+      // Start conversation if not already started (e.g., direct use without interrogation)
+      if (tutor.getMessages().length === 0) {
+        tutor.startConversation(scopeRef.current);
+      }
 
       try {
         const iter = tutor.sendMessage(text);
@@ -105,6 +110,43 @@ export function useFeynmanTutor(scope?: { courseId?: string }) {
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Failed to send message";
         setError(msg);
+      }
+    },
+    [vaultId, tutor],
+  );
+
+  const startInterrogation = useCallback(
+    async (sources: SessionSource[]) => {
+      if (!vaultId) {
+        setError("No vault connected. Connect a vault to use the Feynman Tutor.");
+        return;
+      }
+      if (sources.length === 0) {
+        setError("No session sources available for interrogation.");
+        return;
+      }
+
+      setError(null);
+      setIsInterrogating(true);
+      setCurrentSourceName(sources[0]?.title ?? "");
+
+      // Reset conversation for the interrogation session
+      tutor.startConversation(scopeRef.current);
+
+      try {
+        const iter = tutor.startInterrogation(sources);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const _ of iter) {
+          setMessages(tutor.getMessages());
+        }
+        // Final state sync
+        setMessages(tutor.getMessages());
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Failed to start interrogation";
+        setError(msg);
+      } finally {
+        setIsInterrogating(false);
+        setCurrentSourceName(null);
       }
     },
     [vaultId, tutor],
@@ -140,8 +182,11 @@ export function useFeynmanTutor(scope?: { courseId?: string }) {
   return {
     messages,
     isActive: tutor.isActive,
+    isInterrogating,
+    currentSourceName,
     error,
     sendMessage,
+    startInterrogation,
     summarizeGaps,
     saveGaps,
     reset,

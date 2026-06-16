@@ -48,9 +48,9 @@ You MUST emit a single JSON code block containing the assembled result:
                 { "url": "https://example.com/video", "title": "Video title", "type": "watching", "estimatedMinutes": 15 }
               ],
               "cards": [
-                { "front": "Question about the reading", "sourceIndex": 0 },
-                { "front": "Question about the video", "sourceIndex": 1 },
-                { "front": "Another card about the reading", "sourceIndex": 0 }
+                { "front": "Question about the reading", "back": "Correct answer from the source", "sourceIndex": 0 },
+                { "front": "Question about the video", "back": "Correct answer from the source", "sourceIndex": 1 },
+                { "front": "Another card about the reading", "back": "Correct answer from the source", "sourceIndex": 0 }
               ]
             }
           ],
@@ -64,7 +64,7 @@ You MUST emit a single JSON code block containing the assembled result:
         }
       ],
       "cardSeeds": [
-        { "front": "A general question or prompt", "milestoneIndex": 0 }
+        { "front": "A general question or prompt", "back": "The correct answer", "milestoneIndex": 0 }
       ],
       "retrievalQs": [
         { "question": "Retrieval question", "milestoneIndex": 0, "answerSnippet": "Brief answer" }
@@ -82,15 +82,15 @@ You MUST emit a single JSON code block containing the assembled result:
 - **Capability milestones**: Each milestone describes what the learner CAN DO.
 - **Desirable difficulties**: Sequence for productive struggle.
 - **2-5 milestones per course**, 2-5 sessions per milestone.
-- **Sessions are structured**: Each session has readings/watchings and per-source card prompts. Assign as many cards per source as makes sense.
+- **Sessions are structured**: Each session has readings/watchings and per-source card prompts. Generate 3-5 memory cards per reading source — each card tests specific recall from that source.
 - **Cards match sources**: Each card has a sourceIndex pointing to the session's sources array. Cards are about specific readings/watchings — not generic.
+- **Cards are memory Q+A pairs**: Every card MUST have both a front (question/prompt) AND a back (correct answer drawn from the source material). Cards test one concept each.
 - **Projects are gated**: Each project lists requiredSessionIndices — which sessions in the same milestone must be completed first.
-- **Scaffold only**: Card seeds are fronts only — no pre-written answers.
 - **Domain**: Choose or create domain names that fit the course content.
 - **Campaign title**: Derive from the overall research goal.
 
 ## Never
-- Pre-write card backs (scaffold-only).
+- Leave card backs blank or omitted. Cards MUST have correct answers.
 - Auto-commit or materialize without explicit user approval.
 - Suggest more than 3 courses per research goal.
 `;
