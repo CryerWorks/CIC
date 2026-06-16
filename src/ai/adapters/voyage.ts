@@ -19,6 +19,7 @@ export class VoyageAdapter implements Provider {
   private readonly secrets: SecretStore;
   private readonly defaultModel: string;
   private readonly fetchFn: typeof fetch;
+  private readonly inlineKey?: string;
 
   constructor(opts: {
     id: string;
@@ -26,12 +27,19 @@ export class VoyageAdapter implements Provider {
     secrets: SecretStore;
     defaultModel?: string;
     fetchFn?: typeof fetch;
+    apiKey?: string;
   }) {
     this.id = opts.id;
     this.apiKeyRef = opts.apiKeyRef;
     this.secrets = opts.secrets;
     this.defaultModel = opts.defaultModel ?? "voyage-3";
     this.fetchFn = opts.fetchFn ?? globalThis.fetch.bind(globalThis);
+    this.inlineKey = opts.apiKey;
+  }
+
+  private async resolveKey(): Promise<string | null> {
+    if (this.inlineKey) return this.inlineKey;
+    return this.resolveKey();
   }
 
   capabilities(): ProviderCapabilities {
@@ -39,7 +47,7 @@ export class VoyageAdapter implements Provider {
   }
 
   async probe(opts?: ProbeOptions): Promise<ProbeOutcome> {
-    const key = await this.secrets.get(this.apiKeyRef);
+    const key = await this.resolveKey();
     const start = performance.now();
     const res = await this.fetchFn("https://api.voyageai.com/v1/embeddings", {
       method: "POST",
@@ -65,7 +73,7 @@ export class VoyageAdapter implements Provider {
   }
 
   async embed(texts: string[], opts: EmbedOptions): Promise<EmbedResult> {
-    const key = await this.secrets.get(this.apiKeyRef);
+    const key = await this.resolveKey();
     if (!key) throw new ProviderError("auth", this.id, "No API key configured", false);
     const res = await this.fetchFn("https://api.voyageai.com/v1/embeddings", {
       method: "POST",

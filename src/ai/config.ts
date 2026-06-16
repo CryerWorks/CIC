@@ -32,6 +32,9 @@ const ProviderConfigBase = z.object({
   label: labelSchema,
   baseUrl: z.string().url().optional(),
   apiKeyRef: z.string().min(1).max(64).optional(),
+  /** Inline API key — primary storage for providers where keychain is unreliable.
+   *  When present, adapters use this instead of querying the keychain. */
+  apiKey: z.string().min(1).optional(),
   defaultModel: modelSchema.optional(),
   embedModel: modelSchema.optional(),
 });
@@ -43,10 +46,10 @@ export const ProviderConfigSchema = ProviderConfigBase.refine(
     // use case — only fully-managed remote vendors (OpenAI, OpenRouter, Anthropic) require a key.
     if (p.type === "ollama") return !!p.baseUrl;
       if (p.type === "openai-compatible") return !!p.baseUrl;
-      if (p.type === "anthropic") return !!p.apiKeyRef;
-      if (p.type === "deepseek") return !!p.apiKeyRef;
-      if (p.type === "gemini") return !!p.apiKeyRef;
-      if (p.type === "voyage") return !!p.apiKeyRef;
+      if (p.type === "anthropic") return !!(p.apiKeyRef || p.apiKey);
+      if (p.type === "deepseek") return !!(p.apiKeyRef || p.apiKey);
+      if (p.type === "gemini") return !!(p.apiKeyRef || p.apiKey);
+      if (p.type === "voyage") return !!(p.apiKeyRef || p.apiKey);
       return false;
   },
   { message: "missing required fields for this provider type (baseUrl and/or apiKeyRef)" },

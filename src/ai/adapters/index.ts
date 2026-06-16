@@ -58,6 +58,7 @@ export function createProvider(
         secrets,
         defaultModel: config.defaultModel,
         embedModel: config.embedModel,
+        apiKey: (config as Record<string, unknown>).apiKey as string | undefined,
         fetchFn,
       });
     case "gemini":
@@ -67,6 +68,7 @@ export function createProvider(
         secrets,
         defaultModel: config.defaultModel,
         embedModel: config.embedModel,
+        apiKey: (config as Record<string, unknown>).apiKey as string | undefined,
         fetchFn,
       });
     case "voyage":
@@ -75,6 +77,7 @@ export function createProvider(
         apiKeyRef: config.apiKeyRef!,
         secrets,
         defaultModel: config.defaultModel,
+        apiKey: (config as Record<string, unknown>).apiKey as string | undefined,
         fetchFn,
       });
   }

@@ -22,6 +22,8 @@ export class DeepSeekAdapter implements Provider {
   private readonly defaultModel: string;
   private readonly embedModel: string;
   private readonly fetchFn: typeof fetch;
+  /** Inline API key from config — primary source. Falls back to keychain if absent. */
+  private readonly inlineKey?: string;
 
   constructor(opts: {
     id: string;
@@ -30,6 +32,7 @@ export class DeepSeekAdapter implements Provider {
     defaultModel?: string;
     embedModel?: string;
     fetchFn?: typeof fetch;
+    apiKey?: string;
   }) {
     this.id = opts.id;
     this.baseUrl = "https://api.deepseek.com/v1";
@@ -38,6 +41,13 @@ export class DeepSeekAdapter implements Provider {
     this.defaultModel = opts.defaultModel ?? "deepseek-chat";
     this.embedModel = opts.embedModel ?? "deepseek-chat";
     this.fetchFn = opts.fetchFn ?? globalThis.fetch.bind(globalThis);
+    this.inlineKey = opts.apiKey;
+  }
+
+  /** Resolve API key: inline config first, then keychain fallback. */
+  private async resolveKey(): Promise<string | null> {
+    if (this.inlineKey) return this.inlineKey;
+    return this.resolveKey();
   }
 
   capabilities(): ProviderCapabilities {
@@ -45,7 +55,7 @@ export class DeepSeekAdapter implements Provider {
   }
 
   async probe(opts?: ProbeOptions): Promise<ProbeOutcome> {
-    const key = await this.secrets.get(this.apiKeyRef);
+    const key = await this.resolveKey();
     const start = performance.now();
     const res = await this.fetchFn(`${this.baseUrl}/models`, {
       method: "GET",
@@ -65,7 +75,7 @@ export class DeepSeekAdapter implements Provider {
   }
 
   async *chat(messages: ChatMessage[], opts: ChatOptions): AsyncIterable<ChatChunk> {
-    const key = await this.secrets.get(this.apiKeyRef);
+    const key = await this.resolveKey();
     if (!key) {
       throw new ProviderError("auth", this.id, "No API key configured", false);
     }
@@ -124,7 +134,7 @@ export class DeepSeekAdapter implements Provider {
   }
 
   async embed(texts: string[], opts: EmbedOptions): Promise<EmbedResult> {
-    const key = await this.secrets.get(this.apiKeyRef);
+    const key = await this.resolveKey();
     if (!key) throw new ProviderError("auth", this.id, "No API key configured", false);
     const res = await this.fetchFn(`${this.baseUrl}/embeddings`, {
       method: "POST",

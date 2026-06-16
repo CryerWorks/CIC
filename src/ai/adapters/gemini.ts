@@ -21,6 +21,7 @@ export class GeminiAdapter implements Provider {
   private readonly defaultModel: string;
   private readonly embedModel: string;
   private readonly fetchFn: typeof fetch;
+  private readonly inlineKey?: string;
   private static readonly BASE = "https://generativelanguage.googleapis.com/v1beta";
 
   constructor(opts: {
@@ -30,6 +31,7 @@ export class GeminiAdapter implements Provider {
     defaultModel?: string;
     embedModel?: string;
     fetchFn?: typeof fetch;
+    apiKey?: string;
   }) {
     this.id = opts.id;
     this.apiKeyRef = opts.apiKeyRef;
@@ -37,6 +39,12 @@ export class GeminiAdapter implements Provider {
     this.defaultModel = opts.defaultModel ?? "gemini-2.0-flash";
     this.embedModel = opts.embedModel ?? "text-embedding-004";
     this.fetchFn = opts.fetchFn ?? globalThis.fetch.bind(globalThis);
+    this.inlineKey = opts.apiKey;
+  }
+
+  private async resolveKey(): Promise<string | null> {
+    if (this.inlineKey) return this.inlineKey;
+    return this.resolveKey();
   }
 
   capabilities(): ProviderCapabilities {
@@ -44,7 +52,7 @@ export class GeminiAdapter implements Provider {
   }
 
   async probe(opts?: ProbeOptions): Promise<ProbeOutcome> {
-    const key = await this.secrets.get(this.apiKeyRef);
+    const key = await this.resolveKey();
     const start = performance.now();
     const res = await this.fetchFn(
       `${GeminiAdapter.BASE}/models/${this.defaultModel}?key=${key ?? ""}`,
@@ -63,7 +71,7 @@ export class GeminiAdapter implements Provider {
   }
 
   async *chat(messages: ChatMessage[], opts: ChatOptions): AsyncIterable<ChatChunk> {
-    const key = await this.secrets.get(this.apiKeyRef);
+    const key = await this.resolveKey();
     if (!key) throw new ProviderError("auth", this.id, "No API key configured", false);
 
     // Convert ChatMessage[] to Gemini's contents format
@@ -135,7 +143,7 @@ export class GeminiAdapter implements Provider {
   }
 
   async embed(texts: string[], opts: EmbedOptions): Promise<EmbedResult> {
-    const key = await this.secrets.get(this.apiKeyRef);
+    const key = await this.resolveKey();
     if (!key) throw new ProviderError("auth", this.id, "No API key configured", false);
     const url = `${GeminiAdapter.BASE}/models/${opts.model ?? this.embedModel}:batchEmbedContents?key=${key}`;
     const body = { requests: texts.map((t) => ({ model: `models/${opts.model ?? this.embedModel}`, content: { parts: [{ text: t }] } })) };

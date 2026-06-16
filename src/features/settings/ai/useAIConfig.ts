@@ -297,11 +297,11 @@ function buildProviderConfig(input: ProviderFormInput): ProviderConfig {
     case "anthropic":
       return { ...base, apiKeyRef: base.id } as ProviderConfig;
     case "deepseek":
-      return { ...base, apiKeyRef: base.id } as ProviderConfig;
+      return { ...base, apiKeyRef: base.id, apiKey: input.apiKey?.trim() || undefined } as ProviderConfig;
     case "gemini":
-      return { ...base, apiKeyRef: base.id } as ProviderConfig;
+      return { ...base, apiKeyRef: base.id, apiKey: input.apiKey?.trim() || undefined } as ProviderConfig;
     case "voyage":
-      return { ...base, apiKeyRef: base.id } as ProviderConfig;
+      return { ...base, apiKeyRef: base.id, apiKey: input.apiKey?.trim() || undefined } as ProviderConfig;
   }
 }
 
