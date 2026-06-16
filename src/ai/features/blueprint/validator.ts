@@ -57,7 +57,11 @@ const BlueprintResourceMapSchema = z.object({
 const CourseBlueprintSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   domain: z.string().min(1, "Domain is required").max(100),
-  target: BlueprintTargetSchema,
+  target: BlueprintTargetSchema.optional().default({
+    topic: "",
+    scope: "course" as const,
+    depth: "working" as const,
+  }),
   milestones: z.array(MilestoneSeedSchema).min(1, "At least one milestone is required").max(20),
   cardSeeds: z.array(CardSeedSchema).max(200),
   retrievalQs: z.array(RetrievalQSchema).max(100),

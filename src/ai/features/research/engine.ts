@@ -114,6 +114,7 @@ export class ResearchEngineImpl implements ResearchEngine {
     const chatMessages = buildResearchPrompt(goal, sources);
 
     let fullResponse = "";
+    let failedValidation: string | undefined;
     try {
       for await (const chunk of this.deps.router.chat("reasoning", chatMessages, {
         containsVaultContent: true,
@@ -144,19 +145,23 @@ export class ResearchEngineImpl implements ResearchEngine {
             domain: bp.domain,
             courseBlueprint: bp,
           });
-        } catch {
-          // Skip invalid courses — log and continue
+        } catch (e) {
+          // Log validation failures for debugging
+          if (courses.length === 0) {
+            failedValidation = e instanceof Error ? e.message : String(e);
+          }
           continue;
         }
       }
     }
 
     if (courses.length === 0) {
-      const preview = fullResponse.slice(0, 300);
+      const preview = fullResponse.slice(0, 400);
+      const detail = failedValidation ? ` Validation: ${failedValidation}.` : "";
       yield {
         phase: "error",
         message: "Could not generate valid course blueprints. Try refining your topic.",
-        error: `No valid blueprints. AI response: "${preview}${fullResponse.length > 300 ? "…" : ""}"`,
+        error: `No valid blueprints.${detail} AI response: "${preview}${fullResponse.length > 400 ? "…" : ""}"`,
       };
       return;
     }

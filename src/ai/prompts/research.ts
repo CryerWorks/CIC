@@ -30,6 +30,7 @@ You MUST emit a single JSON code block containing the assembled result:
     {
       "title": "Course title",
       "domain": "Domain name",
+      "target": { "topic": "Course topic", "scope": "course", "depth": "working" },
       "milestones": [
         {
           "order": 0,
