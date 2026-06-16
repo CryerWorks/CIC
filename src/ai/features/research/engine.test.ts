@@ -1,17 +1,17 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from "vitest";
 import { ResearchEngineImpl, type ResearchEngineDeps } from "./engine";
-import type { WebSearchProvider, ResearchGoal, ResearchEvent } from "./types";
+import type { WebSearchProvider, ResearchGoal, ResearchEvent, ResearchSourceType } from "./types";
 
 /** A fake search provider that returns predefined results. */
 class FakeSearchProvider implements WebSearchProvider {
-  private results: Array<{ title: string; url: string; snippet: string; sourceType: string }> = [];
+  private results: Array<{ title: string; url: string; snippet: string; sourceType: ResearchSourceType }> = [];
 
   setResults(r: typeof this.results): void {
     this.results = r;
   }
 
-  async search(_query: string, _count?: number): Promise<Array<{ title: string; url: string; snippet: string; sourceType: string }>> {
+  async search(_query: string, _count?: number): Promise<Array<{ title: string; url: string; snippet: string; sourceType: ResearchSourceType }>> {
     void _query; void _count;
     return this.results.map((r) => ({
       title: r.title,

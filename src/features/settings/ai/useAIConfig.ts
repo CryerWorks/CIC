@@ -295,6 +295,10 @@ function buildProviderConfig(input: ProviderFormInput): ProviderConfig {
       } as ProviderConfig;
     case "anthropic":
       return { ...base, apiKeyRef: base.id } as ProviderConfig;
+    case "deepseek":
+      return { ...base, apiKeyRef: base.id } as ProviderConfig;
+    case "gemini":
+      return { ...base, apiKeyRef: base.id } as ProviderConfig;
   }
 }
 

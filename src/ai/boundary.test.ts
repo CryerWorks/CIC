@@ -8,6 +8,7 @@ import { join, relative, posix } from "node:path";
  *
  * Walks `src/` and asserts that NO source file outside `src/ai/adapters/**` or `src/ai/testing/**`
  * imports an adapter class (`OllamaAdapter` / `OpenAICompatibleAdapter` / `AnthropicAdapter` /
+ * `DeepSeekAdapter` / `GeminiAdapter`)
  * `TauriKeychainSecretStore`) OR from a path under `src/ai/adapters/`. Features depend on the
  * spine (`provider`, `errors`, `config`, `secrets`, `router`) and on the composition root's
  * `useAIRouter()` — never on a concrete adapter class.
@@ -22,6 +23,8 @@ const FORBIDDEN_SYMBOLS = [
   "OllamaAdapter",
   "OpenAICompatibleAdapter",
   "AnthropicAdapter",
+  "DeepSeekAdapter",
+  "GeminiAdapter",
 ];
 
 const ADAPTER_PATH_RE = /(?:from|require)\s*\(?\s*["'].*\/ai\/adapters\/[^"']+["']/;

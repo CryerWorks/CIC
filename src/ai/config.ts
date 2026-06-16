@@ -16,7 +16,7 @@ import { getSetting, setSetting } from "../db/repositories/settings";
 /** The single settings key under which the AIConfig blob is stored. */
 export const AI_CONFIG_KEY = "ai.config";
 
-export type ProviderType = "ollama" | "openai-compatible" | "anthropic";
+export type ProviderType = "ollama" | "openai-compatible" | "anthropic" | "deepseek" | "gemini";
 
 export type AIRole = "reasoning" | "drafting" | "embeddings";
 
@@ -28,7 +28,7 @@ const labelSchema = z.string().min(1).max(80).transform((s) => s.trim());
 
 const ProviderConfigBase = z.object({
   id: idSchema,
-  type: z.enum(["ollama", "openai-compatible", "anthropic"]),
+  type: z.enum(["ollama", "openai-compatible", "anthropic", "deepseek", "gemini"]),
   label: labelSchema,
   baseUrl: z.string().url().optional(),
   apiKeyRef: z.string().min(1).max(64).optional(),
@@ -42,9 +42,11 @@ export const ProviderConfigSchema = ProviderConfigBase.refine(
     // because keyless local servers (LM Studio, llama.cpp `--server`, vLLM) are a first-class
     // use case — only fully-managed remote vendors (OpenAI, OpenRouter, Anthropic) require a key.
     if (p.type === "ollama") return !!p.baseUrl;
-    if (p.type === "openai-compatible") return !!p.baseUrl;
-    if (p.type === "anthropic") return !!p.apiKeyRef;
-    return false;
+      if (p.type === "openai-compatible") return !!p.baseUrl;
+      if (p.type === "anthropic") return !!p.apiKeyRef;
+      if (p.type === "deepseek") return !!p.apiKeyRef;
+      if (p.type === "gemini") return !!p.apiKeyRef;
+      return false;
   },
   { message: "missing required fields for this provider type (baseUrl and/or apiKeyRef)" },
 ).refine(

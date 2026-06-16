@@ -14,6 +14,8 @@ import type { SecretStore } from "../secrets";
 import { OllamaAdapter } from "./ollama";
 import { OpenAICompatibleAdapter } from "./openai-compatible";
 import { AnthropicAdapter } from "./anthropic";
+import { DeepSeekAdapter } from "./deepseek";
+import { GeminiAdapter } from "./gemini";
 
 export function createProvider(
   config: ProviderConfig,
@@ -46,6 +48,24 @@ export function createProvider(
         apiKeyRef: config.apiKeyRef!,
         secrets,
         defaultModel: config.defaultModel,
+        fetchFn,
+      });
+    case "deepseek":
+      return new DeepSeekAdapter({
+        id: config.id,
+        apiKeyRef: config.apiKeyRef!,
+        secrets,
+        defaultModel: config.defaultModel,
+        embedModel: config.embedModel,
+        fetchFn,
+      });
+    case "gemini":
+      return new GeminiAdapter({
+        id: config.id,
+        apiKeyRef: config.apiKeyRef!,
+        secrets,
+        defaultModel: config.defaultModel,
+        embedModel: config.embedModel,
         fetchFn,
       });
   }

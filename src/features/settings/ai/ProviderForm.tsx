@@ -9,6 +9,8 @@ const TYPE_LABELS: Record<ProviderType, string> = {
   ollama: "Ollama (local)",
   "openai-compatible": "OpenAI-compatible (LM Studio, llama.cpp, vLLM, OpenAI, OpenRouter, …)",
   anthropic: "Anthropic",
+  deepseek: "DeepSeek",
+  gemini: "Google Gemini",
 };
 
 const DEFAULT_OLLAMA_URL = "http://localhost:11434";
@@ -54,9 +56,9 @@ export function ProviderForm({
   const needsBaseUrl = type === "ollama" || type === "openai-compatible";
   // The API-key field is SHOWN for both openai-compatible and anthropic, but only REQUIRED for
   // anthropic. openai-compatible accepts a blank key — that's the LM Studio / llama.cpp path.
-  const showApiKeyField = type === "openai-compatible" || type === "anthropic";
-  const apiKeyRequired = type === "anthropic";
-  const showEmbedModel = type === "ollama" || type === "openai-compatible";
+  const showApiKeyField = type === "openai-compatible" || type === "anthropic" || type === "deepseek" || type === "gemini";
+  const apiKeyRequired = type === "anthropic" || type === "deepseek" || type === "gemini";
+  const showEmbedModel = type === "ollama" || type === "openai-compatible" || type === "deepseek" || type === "gemini";
 
   const canSave =
     id.trim() !== "" &&
