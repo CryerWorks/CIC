@@ -25,6 +25,7 @@ const FORBIDDEN_SYMBOLS = [
   "AnthropicAdapter",
   "DeepSeekAdapter",
   "GeminiAdapter",
+  "VoyageAdapter",
 ];
 
 const ADAPTER_PATH_RE = /(?:from|require)\s*\(?\s*["'].*\/ai\/adapters\/[^"']+["']/;

@@ -16,6 +16,7 @@ import { OpenAICompatibleAdapter } from "./openai-compatible";
 import { AnthropicAdapter } from "./anthropic";
 import { DeepSeekAdapter } from "./deepseek";
 import { GeminiAdapter } from "./gemini";
+import { VoyageAdapter } from "./voyage";
 
 export function createProvider(
   config: ProviderConfig,
@@ -66,6 +67,14 @@ export function createProvider(
         secrets,
         defaultModel: config.defaultModel,
         embedModel: config.embedModel,
+        fetchFn,
+      });
+    case "voyage":
+      return new VoyageAdapter({
+        id: config.id,
+        apiKeyRef: config.apiKeyRef!,
+        secrets,
+        defaultModel: config.defaultModel,
         fetchFn,
       });
   }

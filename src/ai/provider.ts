@@ -86,7 +86,7 @@ export interface ProbeOptions {
   signal?: AbortSignal;
 }
 
-export type ProviderType = "ollama" | "openai-compatible" | "anthropic" | "deepseek" | "gemini";
+export type ProviderType = "ollama" | "openai-compatible" | "anthropic" | "deepseek" | "gemini" | "voyage";
 
 export interface Provider {
   /** Matches the `ProviderConfig.id` that produced this Provider. */

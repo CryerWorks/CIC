@@ -16,7 +16,7 @@ import { getSetting, setSetting } from "../db/repositories/settings";
 /** The single settings key under which the AIConfig blob is stored. */
 export const AI_CONFIG_KEY = "ai.config";
 
-export type ProviderType = "ollama" | "openai-compatible" | "anthropic" | "deepseek" | "gemini";
+export type ProviderType = "ollama" | "openai-compatible" | "anthropic" | "deepseek" | "gemini" | "voyage";
 
 export type AIRole = "reasoning" | "drafting" | "embeddings";
 
@@ -28,7 +28,7 @@ const labelSchema = z.string().min(1).max(80).transform((s) => s.trim());
 
 const ProviderConfigBase = z.object({
   id: idSchema,
-  type: z.enum(["ollama", "openai-compatible", "anthropic", "deepseek", "gemini"]),
+  type: z.enum(["ollama", "openai-compatible", "anthropic", "deepseek", "gemini", "voyage"]),
   label: labelSchema,
   baseUrl: z.string().url().optional(),
   apiKeyRef: z.string().min(1).max(64).optional(),
@@ -46,6 +46,7 @@ export const ProviderConfigSchema = ProviderConfigBase.refine(
       if (p.type === "anthropic") return !!p.apiKeyRef;
       if (p.type === "deepseek") return !!p.apiKeyRef;
       if (p.type === "gemini") return !!p.apiKeyRef;
+      if (p.type === "voyage") return !!p.apiKeyRef;
       return false;
   },
   { message: "missing required fields for this provider type (baseUrl and/or apiKeyRef)" },

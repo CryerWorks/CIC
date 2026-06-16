@@ -299,6 +299,8 @@ function buildProviderConfig(input: ProviderFormInput): ProviderConfig {
       return { ...base, apiKeyRef: base.id } as ProviderConfig;
     case "gemini":
       return { ...base, apiKeyRef: base.id } as ProviderConfig;
+    case "voyage":
+      return { ...base, apiKeyRef: base.id } as ProviderConfig;
   }
 }
 
