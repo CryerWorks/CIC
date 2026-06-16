@@ -49,8 +49,24 @@ export function defaultRouter(deps: DefaultRouterDeps): AIRouter {
   const { config, providers, emit } = deps;
   const probeCache = new Map<string, ProbeOutcome>();
 
+  // Auto-assign null roles to the first capable provider so new providers work
+  // without manual role routing setup.
+  const routing = { ...config.routing };
+  if (routing.reasoning === null) {
+    const first = [...providers.values()].find((p) => p.capabilities().chat);
+    if (first) routing.reasoning = { providerId: first.id, model: "" };
+  }
+  if (routing.drafting === null) {
+    const first = [...providers.values()].find((p) => p.capabilities().chat);
+    if (first) routing.drafting = { providerId: first.id, model: "" };
+  }
+  if (routing.embeddings === null) {
+    const first = [...providers.values()].find((p) => p.capabilities().embeddings);
+    if (first) routing.embeddings = { providerId: first.id, model: "" };
+  }
+
   function ensureRoleTarget(role: AIRole): RoleTarget {
-    const t = config.routing[role];
+    const t = routing[role];
     if (t === null) {
       throw new ProviderError("unsupported", "", `role ${role} is unassigned`, false);
     }
