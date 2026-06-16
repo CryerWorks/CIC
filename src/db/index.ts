@@ -58,4 +58,7 @@ export * from "./repositories/feynmanGaps";
 // Feature 021: Interleaving Scheduler — course prerequisite tracking (m0012).
 export * from "./repositories/courseDependencies";
 
+// Dashboard activity queries (streak, sessions, heatmap).
+export * from "./repositories/activity";
+
 export { metadataSchemaFor, type ResourceMetadata } from "./models/resourceMetadata";

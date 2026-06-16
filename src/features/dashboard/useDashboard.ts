@@ -8,11 +8,17 @@ import {
   getNewCardCap,
   getOverconfidentCards,
   getOpenGapCountByCourse,
+  getCurrentStreak,
+  getTodayProtocol,
+  getRecentSessions,
+  getActivityHeatmap,
   type DashboardSummary,
   type DomainAllocation,
   type Course,
   type Card,
   type GapCountByCourse,
+  type RecentSession,
+  type HeatmapDay,
 } from "../../db";
 import { getDailyMix, getColdDomains, type DailyMixItem, type ColdDomain } from "../interleaving/scheduler";
 import { getLinkedNotes, type KnowledgeGraphData } from "./graphQueries";
@@ -50,6 +56,15 @@ export interface DashboardData {
   coldDomains: ColdDomain[];
   /** Knowledge graph: most-linked notes + cross-domain bridges (Feature 022). */
   knowledgeGraph: KnowledgeGraphData;
+  /** Current study streak (consecutive days with review/session). */
+  streak: number;
+  /** Planned + completed today session counts. */
+  plannedCount: number;
+  completedToday: number;
+  /** Last 5 completed sessions. */
+  recentSessions: RecentSession[];
+  /** 12-week activity heatmap. */
+  heatmap: HeatmapDay[];
 }
 
 export function useDashboard(refreshKey = 0): DashboardData {
@@ -66,6 +81,11 @@ export function useDashboard(refreshKey = 0): DashboardData {
     mostLinked: [],
     crossDomainBridges: [],
   });
+  const [streak, setStreak] = useState(0);
+  const [plannedCount, setPlannedCount] = useState(0);
+  const [completedToday, setCompletedToday] = useState(0);
+  const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
+  const [heatmap, setHeatmap] = useState<HeatmapDay[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -79,6 +99,11 @@ export function useDashboard(refreshKey = 0): DashboardData {
       setDailyMix([]);
       setColdDomains([]);
       setKnowledgeGraph({ mostLinked: [], crossDomainBridges: [] });
+      setStreak(0);
+      setPlannedCount(0);
+      setCompletedToday(0);
+      setRecentSessions([]);
+      setHeatmap([]);
       setLoading(false);
       return;
     }
@@ -103,6 +128,13 @@ export function useDashboard(refreshKey = 0): DashboardData {
       const kg = await getLinkedNotes(db, vaultId).catch(
         () => ({ mostLinked: [], crossDomainBridges: [] } as KnowledgeGraphData),
       );
+      // Activity data (streak, protocol, sessions, heatmap) — loaded separately.
+      const [strk, proto, sessions, hm] = await Promise.all([
+        getCurrentStreak(db, vaultId).catch(() => 0),
+        getTodayProtocol(db, vaultId).catch(() => ({ plannedCount: 0, completedToday: 0 })),
+        getRecentSessions(db, vaultId).catch(() => [] as RecentSession[]),
+        getActivityHeatmap(db, vaultId).catch(() => [] as HeatmapDay[]),
+      ]);
       if (!active) return;
       setSummary(s);
       setCourseGroups(
@@ -117,11 +149,16 @@ export function useDashboard(refreshKey = 0): DashboardData {
       setDailyMix(mix);
       setColdDomains(cold);
       setKnowledgeGraph(kg);
+      setStreak(strk);
+      setPlannedCount(proto.plannedCount);
+      setCompletedToday(proto.completedToday);
+      setRecentSessions(sessions);
+      setHeatmap(hm);
     })().finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, [db, vaultId, refreshKey]);
 
-  return { loading, summary, courseGroups, dueCount, overconfident, gapCounts, dailyMix, coldDomains, knowledgeGraph };
+  return { loading, summary, courseGroups, dueCount, overconfident, gapCounts, dailyMix, coldDomains, knowledgeGraph, streak, plannedCount, completedToday, recentSessions, heatmap };
 }

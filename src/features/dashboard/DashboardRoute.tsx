@@ -12,13 +12,12 @@ import { GapsTile } from "./GapsTile";
 import { DailyMixTile } from "./DailyMixTile";
 import { ColdTile } from "./ColdTile";
 import { KnowledgeGraph } from "./KnowledgeGraph";
-import { DeferredTiles } from "./DeferredTiles";
+import { QuickActions } from "./QuickActions";
+import { ActivitySection } from "./ActivitySection";
 
 /**
  * The Command Center Dashboard (F8) — a real, read-only summary of the active vault's Domain →
- * Course → Milestone hierarchy (vault-scoped per Feature 009). Gated on both the store being ready
- * AND a connected vault: with no vault it guides the user to connect one rather than showing another
- * vault's data or a zero grid (FR-006). The retention tiles are honest Phase-2 placeholders.
+ * Course → Milestone hierarchy (vault-scoped per Feature 009).
  */
 export function DashboardRoute() {
   const db = useDbState();
@@ -42,16 +41,18 @@ export function DashboardRoute() {
           </span>
         </Callout>
       ) : (
-        <DashboardView vaultReady />
+        <DashboardView />
       )}
     </div>
   );
 }
 
-function DashboardView({ vaultReady }: { vaultReady: boolean }) {
+function DashboardView() {
   const [refreshKey, setRefreshKey] = useState(0);
-  const { loading, summary, courseGroups, dueCount, overconfident, gapCounts, dailyMix, coldDomains, knowledgeGraph } =
-    useDashboard(refreshKey);
+  const {
+    loading, summary, courseGroups, dueCount, overconfident, gapCounts,
+    dailyMix, coldDomains, knowledgeGraph, streak, plannedCount, recentSessions, heatmap,
+  } = useDashboard(refreshKey);
   const vault = useVault();
   const db = useDb();
   const vaultId = useActiveVaultId();
@@ -70,50 +71,52 @@ function DashboardView({ vaultReady }: { vaultReady: boolean }) {
   }, [db, vaultId, vault.reader]);
 
   if (loading || !summary) return <p className="text-text-dim">Loading…</p>;
-  if (summary.totals.domains === 0) return <Onboarding vaultReady={vaultReady} />;
+  if (summary.totals.domains === 0) return <Onboarding />;
 
   return (
     <>
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-bold text-text">Command Center</h1>
-        {vaultReady && (
-          <span className="flex items-center gap-1.5 text-xs text-text-dim">
-            <span aria-hidden className="h-2 w-2 rounded-full bg-success" /> Vault connected
-          </span>
-        )}
+        <span className="flex items-center gap-1.5 text-xs text-text-dim">
+          <span aria-hidden className="h-2 w-2 rounded-full bg-success" /> Vault connected
+        </span>
       </header>
 
-      <div className="grid grid-cols-3 gap-3">
-        <StatCell label="Domains" value={summary.totals.domains} />
-        <StatCell label="Courses" value={summary.totals.courses} />
-        <StatCell label="Milestones" value={summary.totals.milestones} />
-      </div>
-
-      <MilestoneProgress progress={summary.milestoneProgress} />
-      <DomainAllocation allocation={summary.allocation} />
-
-      <Panel title="Retention">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <Link
-            to="/review"
-            className="rounded-md border border-line bg-surface-sunken px-3 py-2 hover:border-line-bright"
-          >
-            <span className="text-xs text-text-dim">Due for review</span>
-            <div className="mt-1 font-mono text-2xl font-bold text-text">{dueCount}</div>
-            <div className="text-[11px] text-text-dim">cards in this vault</div>
-          </Link>
-          <OverconfidentTile cards={overconfident} />
-          {gapCounts.length > 0 && <GapsTile gaps={gapCounts} onRefresh={handleRefreshGaps} />}
+      {/* ── Today ── */}
+      <Panel title="Today">
+        <div className="flex flex-col gap-3">
+          <QuickActions />
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Link
+              to="/review"
+              className="rounded-md border border-line bg-surface-sunken px-3 py-2 hover:border-line-bright"
+            >
+              <span className="text-xs text-text-dim">Due for review</span>
+              <div className="mt-1 font-mono text-2xl font-bold text-text">{dueCount}</div>
+              <div className="text-[11px] text-text-dim">cards</div>
+            </Link>
+            <OverconfidentTile cards={overconfident} />
+            {gapCounts.length > 0 && <GapsTile gaps={gapCounts} onRefresh={handleRefreshGaps} />}
+            <DailyMixTile items={dailyMix} />
+            <ColdTile domains={coldDomains} />
+          </div>
         </div>
       </Panel>
 
-      <Panel title="Interleaving">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <DailyMixTile items={dailyMix} />
-          <ColdTile domains={coldDomains} />
+      {/* ── Progress ── */}
+      <Panel title="Progress">
+        <div className="flex flex-col gap-4">
+          <div className="grid grid-cols-3 gap-3">
+            <StatCell label="Domains" value={summary.totals.domains} />
+            <StatCell label="Courses" value={summary.totals.courses} />
+            <StatCell label="Milestones" value={summary.totals.milestones} />
+          </div>
+          <MilestoneProgress progress={summary.milestoneProgress} />
+          <DomainAllocation allocation={summary.allocation} />
         </div>
       </Panel>
 
+      {/* ── Courses ── */}
       {courseGroups.some((g) => g.courses.length > 0) && (
         <Panel title="Courses">
           <div className="flex flex-col gap-4">
@@ -122,11 +125,7 @@ function DashboardView({ vaultReady }: { vaultReady: boolean }) {
               .map((g) => (
                 <section key={g.domain.id} className="flex flex-col gap-2">
                   <h2 className="flex items-center gap-2 text-sm font-semibold text-text-dim">
-                    <span
-                      aria-hidden
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: g.domain.color }}
-                    />
+                    <span aria-hidden className="h-3 w-3 rounded-full" style={{ backgroundColor: g.domain.color }} />
                     {g.domain.name}
                   </h2>
                   <ul className="flex flex-col gap-1.5">
@@ -148,37 +147,36 @@ function DashboardView({ vaultReady }: { vaultReady: boolean }) {
         </Panel>
       )}
 
+      {/* ── Active Projects ── */}
       {summary.activeProjects.length > 0 && (
         <Panel title="Active projects">
-          <div className="flex flex-col gap-4">
-            {summary.allocation
-              .map((d) => ({ domain: d, projects: summary.activeProjects.filter((p) => p.domainId === d.id) }))
-              .filter((g) => g.projects.length > 0)
-              .map((g) => (
-                <section key={g.domain.id} className="flex flex-col gap-2">
-                  <h2 className="flex items-center gap-2 text-sm font-semibold text-text-dim">
-                    <span aria-hidden className="h-3 w-3 rounded-full" style={{ backgroundColor: g.domain.color }} />
-                    {g.domain.name}
-                  </h2>
-                  <ul className="flex flex-col gap-1.5">
-                    {g.projects.map((p) => (
-                      <li key={p.id}>
-                        <Link
-                          to={`/courses/${p.courseId}`}
-                          className="flex items-center justify-between rounded-md border border-line bg-panel px-3 py-2 hover:border-line-bright"
-                        >
-                          <span className="text-text">{p.title}</span>
-                          <Tag tone="neutral">project</Tag>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-          </div>
+          <ul className="flex flex-col gap-1.5">
+            {summary.activeProjects.map((p) => (
+              <li key={p.id}>
+                <Link
+                  to={`/courses/${p.courseId}`}
+                  className="flex items-center justify-between rounded-md border border-line bg-panel px-3 py-2 hover:border-line-bright"
+                >
+                  <span className="text-text">{p.title}</span>
+                  <Tag tone="neutral">project</Tag>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </Panel>
       )}
 
+      {/* ── Activity ── */}
+      <Panel title="Activity">
+        <ActivitySection
+          streak={streak}
+          plannedCount={plannedCount}
+          recentSessions={recentSessions}
+          heatmap={heatmap}
+        />
+      </Panel>
+
+      {/* ── Knowledge Graph ── */}
       {(knowledgeGraph.mostLinked.length > 0 || knowledgeGraph.crossDomainBridges.length > 0) && (
         <Panel title="Knowledge Graph">
           <KnowledgeGraph
@@ -187,13 +185,11 @@ function DashboardView({ vaultReady }: { vaultReady: boolean }) {
           />
         </Panel>
       )}
-
-      <DeferredTiles />
     </>
   );
 }
 
-function Onboarding({ vaultReady }: { vaultReady: boolean }) {
+function Onboarding() {
   return (
     <Panel>
       <div className="py-8 text-center">
@@ -210,11 +206,6 @@ function Onboarding({ vaultReady }: { vaultReady: boolean }) {
             Create your first Domain
           </Link>
         </div>
-        {!vaultReady && (
-          <p className="mt-3 text-xs text-text-dim">
-            Tip: connect your Obsidian vault from the Vault screen to materialize Courses as notes.
-          </p>
-        )}
       </div>
     </Panel>
   );

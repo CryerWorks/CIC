@@ -141,14 +141,16 @@ describe("DashboardRoute — onboarding & honest tiles (US3 · Constitution III)
     expect(screen.queryByText("Command Center")).toBeNull(); // no zero-grid headline
   });
 
-  it("shows remaining retention tiles as 'Phase 2' placeholders, plus a real due-cards count", async () => {
+  it("shows Today panel with due-cards, progress, and activity sections", async () => {
     const db = await seededDb(seedTwoDomains);
     renderWithVault({ children: <DashboardRoute />, connect: connectAs(VID), initialize: () => Promise.resolve(db) });
 
     await screen.findByText("Command Center");
-    expect(screen.getAllByText("Phase 2").length).toBe(4); // streak/protocol/heatmap/sessions (due-cards is now real)
+    expect(screen.getByText(/due for review/i)).toBeTruthy();
     expect(screen.getByText(/current streak/i)).toBeTruthy();
-    expect(screen.getByText(/due for review/i)).toBeTruthy(); // real tile (0 seeded cards)
+    expect(screen.getByText(/planned sessions/i)).toBeTruthy();
+    expect(screen.getByText(/12-week activity/i)).toBeTruthy();
+    expect(screen.queryByText("Phase 2")).toBeNull(); // Phase 2 placeholder is gone
     expect(screen.queryByText(/learned/i)).toBeNull(); // nothing claims mastery
   });
 });
