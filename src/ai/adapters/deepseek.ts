@@ -17,8 +17,8 @@ export class DeepSeekAdapter implements Provider {
   readonly id: string;
   readonly type = "deepseek" as const;
   private readonly baseUrl: string;
-  private readonly apiKeyRef: string;
-  private readonly secrets: SecretStore;
+  private readonly _apiKeyRef: string;
+  private readonly _secrets: SecretStore;
   private readonly defaultModel: string;
   private readonly embedModel: string;
   private readonly fetchFn: typeof fetch;
@@ -36,8 +36,8 @@ export class DeepSeekAdapter implements Provider {
   }) {
     this.id = opts.id;
     this.baseUrl = "https://api.deepseek.com/v1";
-    this.apiKeyRef = opts.apiKeyRef;
-    this.secrets = opts.secrets;
+    this._apiKeyRef = opts.apiKeyRef;
+    this._secrets = opts.secrets;
     this.defaultModel = opts.defaultModel ?? "deepseek-chat";
     this.embedModel = opts.embedModel ?? "deepseek-chat";
     this.fetchFn = opts.fetchFn ?? globalThis.fetch.bind(globalThis);
@@ -47,7 +47,7 @@ export class DeepSeekAdapter implements Provider {
   /** Resolve API key: inline config first, then keychain fallback. */
   private async resolveKey(): Promise<string | null> {
     if (this.inlineKey) return this.inlineKey;
-    return this.resolveKey();
+    return this._secrets.get(this._apiKeyRef);
   }
 
   capabilities(): ProviderCapabilities {

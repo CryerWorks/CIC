@@ -15,8 +15,8 @@ import type { SecretStore } from "../secrets";
 export class VoyageAdapter implements Provider {
   readonly id: string;
   readonly type = "voyage" as const;
-  private readonly apiKeyRef: string;
-  private readonly secrets: SecretStore;
+  private readonly _apiKeyRef: string;
+  private readonly _secrets: SecretStore;
   private readonly defaultModel: string;
   private readonly fetchFn: typeof fetch;
   private readonly inlineKey?: string;
@@ -30,8 +30,8 @@ export class VoyageAdapter implements Provider {
     apiKey?: string;
   }) {
     this.id = opts.id;
-    this.apiKeyRef = opts.apiKeyRef;
-    this.secrets = opts.secrets;
+    this._apiKeyRef = opts.apiKeyRef;
+    this._secrets = opts.secrets;
     this.defaultModel = opts.defaultModel ?? "voyage-3";
     this.fetchFn = opts.fetchFn ?? globalThis.fetch.bind(globalThis);
     this.inlineKey = opts.apiKey;
@@ -39,7 +39,7 @@ export class VoyageAdapter implements Provider {
 
   private async resolveKey(): Promise<string | null> {
     if (this.inlineKey) return this.inlineKey;
-    return this.resolveKey();
+    return this._secrets.get(this._apiKeyRef);
   }
 
   capabilities(): ProviderCapabilities {

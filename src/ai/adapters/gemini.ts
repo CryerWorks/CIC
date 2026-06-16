@@ -16,8 +16,8 @@ import type { SecretStore } from "../secrets";
 export class GeminiAdapter implements Provider {
   readonly id: string;
   readonly type = "gemini" as const;
-  private readonly apiKeyRef: string;
-  private readonly secrets: SecretStore;
+  private readonly _apiKeyRef: string;
+  private readonly _secrets: SecretStore;
   private readonly defaultModel: string;
   private readonly embedModel: string;
   private readonly fetchFn: typeof fetch;
@@ -34,8 +34,8 @@ export class GeminiAdapter implements Provider {
     apiKey?: string;
   }) {
     this.id = opts.id;
-    this.apiKeyRef = opts.apiKeyRef;
-    this.secrets = opts.secrets;
+    this._apiKeyRef = opts.apiKeyRef;
+    this._secrets = opts.secrets;
     this.defaultModel = opts.defaultModel ?? "gemini-2.0-flash";
     this.embedModel = opts.embedModel ?? "text-embedding-004";
     this.fetchFn = opts.fetchFn ?? globalThis.fetch.bind(globalThis);
@@ -44,7 +44,7 @@ export class GeminiAdapter implements Provider {
 
   private async resolveKey(): Promise<string | null> {
     if (this.inlineKey) return this.inlineKey;
-    return this.resolveKey();
+    return this._secrets.get(this._apiKeyRef);
   }
 
   capabilities(): ProviderCapabilities {

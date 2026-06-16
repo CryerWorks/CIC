@@ -146,7 +146,7 @@ describe("ResearchEngineImpl", () => {
 
     const errorEvent = events.find((e) => e.phase === "error");
     expect(errorEvent).toBeDefined();
-    expect(errorEvent?.error).toBe("No valid blueprints generated");
+    expect(errorEvent?.error).toContain("No valid blueprints");
   });
 
   it("handles AI router error", async () => {

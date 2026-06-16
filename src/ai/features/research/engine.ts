@@ -152,10 +152,11 @@ export class ResearchEngineImpl implements ResearchEngine {
     }
 
     if (courses.length === 0) {
+      const preview = fullResponse.slice(0, 300);
       yield {
         phase: "error",
-        message: "Could not generate valid course blueprints from the research. Try refining your topic.",
-        error: "No valid blueprints generated",
+        message: "Could not generate valid course blueprints. Try refining your topic.",
+        error: `No valid blueprints. AI response: "${preview}${fullResponse.length > 300 ? "…" : ""}"`,
       };
       return;
     }

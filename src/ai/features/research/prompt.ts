@@ -61,19 +61,55 @@ export function buildResearchPrompt(
 export function extractCampaignJson(
   text: string,
 ): { campaignTitle?: string; courses: unknown[] } | null {
-  const match = text.match(/```json\s*([\s\S]*?)```/);
-  if (!match) return null;
-  try {
-    const parsed = JSON.parse(match[1].trim());
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      Array.isArray((parsed as Record<string, unknown>).courses)
-    ) {
-      return parsed as { campaignTitle?: string; courses: unknown[] };
-    }
-    return null;
-  } catch {
-    return null;
+  // 1. Try ```json fence
+  const fenceMatch = text.match(/```json\s*([\s\S]*?)```/);
+  if (fenceMatch) {
+    try {
+      const parsed = JSON.parse(fenceMatch[1].trim());
+      if (isValidResult(parsed)) return parsed;
+    } catch { /* fall through */ }
   }
+
+  // 2. Try any triple-backtick block (some models use ``` without json tag)
+  const anyFenceMatch = text.match(/```\s*([\s\S]*?)```/);
+  if (anyFenceMatch) {
+    try {
+      const parsed = JSON.parse(anyFenceMatch[1].trim());
+      if (isValidResult(parsed)) return parsed;
+    } catch { /* fall through */ }
+  }
+
+  // 3. Try to find a top-level JSON object anywhere in the text
+  const jsonObjMatch = text.match(/\{[\s\S]*"courses"\s*:\s*\[[\s\S]*?\}\s*\}/);
+  if (jsonObjMatch) {
+    try {
+      const parsed = JSON.parse(jsonObjMatch[0]);
+      if (isValidResult(parsed)) return parsed;
+    } catch { /* fall through */ }
+  }
+
+  // 4. Try parsing the entire text as JSON (some models return pure JSON)
+  try {
+    const trimmed = text.trim();
+    if (trimmed.startsWith("{") || trimmed.startsWith("```json")) {
+      const cleaned = trimmed
+        .replace(/^```json\s*/, "")
+        .replace(/```\s*$/, "")
+        .trim();
+      const parsed = JSON.parse(cleaned);
+      if (isValidResult(parsed)) return parsed;
+    }
+  } catch { /* fall through */ }
+
+  return null;
+}
+
+function isValidResult(
+  parsed: unknown,
+): parsed is { campaignTitle?: string; courses: unknown[] } {
+  return (
+    typeof parsed === "object" &&
+    parsed !== null &&
+    Array.isArray((parsed as Record<string, unknown>).courses)
+  );
 }
