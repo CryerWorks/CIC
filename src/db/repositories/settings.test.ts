@@ -8,7 +8,7 @@ describe("settings repository + m0002 migration (Feature 006 · FR-003/FR-009)",
   it("m0002 applies on top of m0001 and the settings table is usable", async () => {
     const db = NodeSqlExecutor.open();
     const result = await migrate(db);
-    expect(result.to).toBe(15); // m0001–m0015
+    expect(result.to).toBe(16); // m0001–m0016
 
     const table = await db.select(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'settings'",

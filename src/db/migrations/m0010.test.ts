@@ -11,11 +11,11 @@ describe("m0010 feynman_gaps migration", () => {
     await migrate(db);
   });
 
-  it("sets user_version to 12 after all migrations", async () => {
+  it("sets user_version to 16 after all migrations", async () => {
     const [{ user_version }] = (await db.select(
       "PRAGMA user_version",
     )) as { user_version: number }[];
-    expect(user_version).toBe(15);
+    expect(user_version).toBe(16);
   });
 
   it("creates feynman_gaps table with correct schema", async () => {

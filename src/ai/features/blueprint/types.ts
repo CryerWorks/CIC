@@ -23,6 +23,14 @@ export interface SessionSource {
   type: "reading" | "watching";
   /** Estimated time to consume in minutes. */
   estimatedMinutes: number;
+  /** Starting page number (for reading sources with page ranges). */
+  startPage?: number;
+  /** Ending page number. */
+  endPage?: number;
+  /** Starting timestamp in seconds (for watching sources with time ranges). */
+  startSeconds?: number;
+  /** Ending timestamp in seconds. */
+  endSeconds?: number;
 }
 
 /** A card seed within a session, referencing a source by index. */

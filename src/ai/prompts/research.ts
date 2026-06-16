@@ -44,8 +44,8 @@ You MUST emit a single JSON code block containing the assembled result:
               "title": "Session title",
               "objective": "What the learner will achieve in this session",
               "sources": [
-                { "url": "https://example.com/article", "title": "Source title", "type": "reading", "estimatedMinutes": 30 },
-                { "url": "https://example.com/video", "title": "Video title", "type": "watching", "estimatedMinutes": 15 }
+                { "url": "https://example.com/article", "title": "Source title", "type": "reading", "estimatedMinutes": 30, "startPage": 12, "endPage": 34 },
+                { "url": "https://example.com/video", "title": "Video title", "type": "watching", "estimatedMinutes": 15, "startSeconds": 30, "endSeconds": 300 }
               ],
               "cards": [
                 { "front": "Question about the reading", "back": "Correct answer from the source", "sourceIndex": 0 },

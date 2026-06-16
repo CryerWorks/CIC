@@ -17,6 +17,10 @@ export * from "./links";
 export * from "./vaultWrite";
 export * from "./setting";
 
+// Feature 023: Session Sources (Daily Loop enrichment)
+export { SessionSourceSchema } from "./sessionSource";
+export type { SessionSourceRow } from "./sessionSource";
+
 // Feature 022: Research Agent (F11)
 export {
   ResearchSourceSchema,

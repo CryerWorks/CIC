@@ -438,3 +438,23 @@ export async function setSessionMilestone(
 ): Promise<void> {
   await update(db, "sessions", { milestone_id: milestoneId }, { id: sessionId });
 }
+
+/** Returns the first session (ordered by order_index) within a Course/Milestone that is still
+ *  planned (not yet completed) — the "next unlocked" session for sequential gating. Returns null
+ *  when all sessions are done. When `milestoneId` is provided, scoped to that milestone; otherwise
+ *  scoped to the entire course. */
+export async function getNextUnlockedSession(
+  db: SqlExecutor,
+  courseId: string,
+  milestoneId: string | null,
+): Promise<Session | null> {
+  const rows = await selectParsed(
+    db,
+    SessionSchema,
+    milestoneId
+      ? "SELECT * FROM sessions WHERE course_id = ? AND milestone_id = ? AND status = 'planned' ORDER BY order_index, date, id LIMIT 1"
+      : "SELECT * FROM sessions WHERE course_id = ? AND status = 'planned' ORDER BY order_index, date, id LIMIT 1",
+    milestoneId ? [courseId, milestoneId] : [courseId],
+  );
+  return rows[0] ?? null;
+}

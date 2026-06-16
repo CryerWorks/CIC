@@ -36,7 +36,7 @@ const ALL_TABLES = [
 ];
 
 describe("migrate — fresh apply (FR-007 / SC-001)", () => {
-  it("takes user_version 0 → 14 and creates all 29 tables", async () => {
+  it("takes user_version 0 → 16 and creates all 29 tables", async () => {
     expect(ALL_TABLES).toHaveLength(29);
     const db = NodeSqlExecutor.open();
 
@@ -44,10 +44,10 @@ describe("migrate — fresh apply (FR-007 / SC-001)", () => {
     expect(before[0].user_version).toBe(0);
 
     const result = await migrate(db);
-    expect(result).toEqual({ from: 0, to: 15, applied: 15 });
+    expect(result).toEqual({ from: 0, to: 16, applied: 16 });
 
     const after = await db.select<{ user_version: number }>("PRAGMA user_version");
-    expect(after[0].user_version).toBe(15);
+    expect(after[0].user_version).toBe(16);
 
     const tables = await db.select<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDb } from "../../app/providers/DbProvider";
 import { useVault, useActiveVaultId } from "../../app/providers/VaultProvider";
 import {
@@ -9,8 +9,12 @@ import {
   listPretestResponses,
   listSessionCardDrafts,
   finalizeSession,
+  getSourcesForSession,
+  markSourceDone,
+  listCourseSessions,
   type Resource,
   type AssignmentKind,
+  type SessionSourceRow,
 } from "../../db";
 import type { NoteInput } from "../../vault";
 import { buildWriteup, writeupPath } from "./writeup";
@@ -48,6 +52,10 @@ export type FinishState =
  * (DB) flips the session to completed, records answers, and materializes the cards; then the vault
  * writes (atomic note + writeup). A vault failure leaves the session completed and offers a retry.
  * Abandoning (unmounting without finishing) leaves the session **planned** and re-doable (R11).
+ *
+ * Feature 023 extension: loads `sessionSources` (session_sources rows) for rich media card display
+ * in ActiveStudyStep, with per-source completion tracking. Also loads `milestoneSessions` for the
+ * PlanningStep session ordering view.
  */
 export function useDailyLoop(sessionId: string) {
   const db = useDb();
@@ -57,6 +65,7 @@ export function useDailyLoop(sessionId: string) {
   const [loading, setLoading] = useState(true);
   const [objective, setObjective] = useState("");
   const [courseTitle, setCourseTitle] = useState("");
+  const [courseId, setCourseId] = useState("");
   const [assignments, setAssignments] = useState<AssignmentView[]>([]);
   const [pretest, setPretest] = useState<PretestAttempt[]>([]);
   const [cards, setCards] = useState<DoingCard[]>([]);
@@ -71,6 +80,18 @@ export function useDailyLoop(sessionId: string) {
   const savedRef = useRef(false);
   const pendingRef = useRef<{ writeupPath: string; writeup: NoteInput; note: { path: string; body: string } | null } | null>(null);
 
+  // Feature 023: session sources for rich media cards
+  const [sessionSources, setSessionSources] = useState<SessionSourceRow[]>([]);
+  const [milestoneSessions, setMilestoneSessions] = useState<
+    { id: string; title: string; status: "completed" | "active" | "locked" }[]
+  >([]);
+
+  /** Whether all sources for the current session are marked done (gate for Feynman step). */
+  const allSourcesDone = useMemo(
+    () => sessionSources.length > 0 && sessionSources.every((s) => s.completed),
+    [sessionSources],
+  );
+
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -80,12 +101,14 @@ export function useDailyLoop(sessionId: string) {
         if (active) setLoading(false);
         return;
       }
-      const [course, resources, asg, pre, drafts] = await Promise.all([
+      setCourseId(session.course_id);
+      const [course, resources, asg, pre, drafts, sources] = await Promise.all([
         getCourse(db, session.course_id),
         listResources(db, vaultId),
         listSessionAssignments(db, sessionId),
         listPretestResponses(db, sessionId),
         listSessionCardDrafts(db, sessionId),
+        getSourcesForSession(db, sessionId),
       ]);
       if (!active) return;
       const byId = new Map(resources.map((r) => [r.id, r]));
@@ -94,12 +117,42 @@ export function useDailyLoop(sessionId: string) {
       setAssignments(asg.map((a) => ({ resourceId: a.resource_id, resource: byId.get(a.resource_id), locator: a.locator, kind: a.assignment_kind })));
       setPretest(pre.map((p) => ({ id: p.id, question: p.question, answer: p.user_response ?? "" })));
       setCards(drafts.map((d) => ({ key: d.id, front: d.front, back: d.back })));
+      setSessionSources(sources);
+
+      // Load milestone sessions for PlanningStep context
+      if (sources.length > 0) {
+        const allSessions = await listCourseSessions(db, session.course_id);
+        const milestoneSess = allSessions
+          .filter((s) => s.milestone_id === session.milestone_id || !session.milestone_id)
+          .map((s) => ({
+            id: s.id,
+            title: s.objective ?? "(no objective)",
+            status: (s.id === sessionId
+              ? "active"
+              : s.status === "completed"
+                ? "completed"
+                : "locked") as "completed" | "active" | "locked",
+          }));
+        setMilestoneSessions(milestoneSess);
+      }
+
       setLoading(false);
     })();
     return () => {
       active = false;
     };
   }, [db, sessionId, vaultId]);
+
+  /** Toggle a session source's done state by persisting the change and updating local state. */
+  const onToggleSourceDone = useCallback(
+    async (sourceId: string) => {
+      await markSourceDone(db, sourceId);
+      setSessionSources((prev) =>
+        prev.map((s) => (s.id === sourceId ? { ...s, completed: !s.completed } : s)),
+      );
+    },
+    [db],
+  );
 
   const setPretestAnswer = useCallback((id: string, answer: string) => {
     setPretest((ps) => ps.map((p) => (p.id === id ? { ...p, answer } : p)));
@@ -200,6 +253,7 @@ export function useDailyLoop(sessionId: string) {
     loading,
     objective,
     courseTitle,
+    courseId,
     assignments,
     pretest,
     setPretestAnswer,
@@ -218,6 +272,11 @@ export function useDailyLoop(sessionId: string) {
     finish,
     runFinish,
     retry,
+    // Feature 023: session sources
+    sessionSources,
+    onToggleSourceDone,
+    allSourcesDone,
+    milestoneSessions,
   };
 }
 

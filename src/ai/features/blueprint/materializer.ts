@@ -207,6 +207,13 @@ async function materializeSessions(
         type: source.type,
         estimated_minutes: source.estimatedMinutes,
         ordering: sri,
+        thumbnail_url: "",
+        start_page: source.startPage ?? null,
+        end_page: source.endPage ?? null,
+        start_seconds: source.startSeconds ?? null,
+        end_seconds: source.endSeconds ?? null,
+        description: "",
+        completed: false,
       });
     }
 

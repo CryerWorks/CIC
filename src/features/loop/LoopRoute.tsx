@@ -7,6 +7,7 @@ import { listPlannedSessions, listSessionsByVault, type SessionListItem } from "
 import { useDailyLoop } from "./useDailyLoop";
 import { Stepper, type Step } from "./Stepper";
 import { PretestStep } from "./steps/PretestStep";
+import { PlanningStep } from "./steps/PlanningStep";
 import { ActiveStudyStep } from "./steps/ActiveStudyStep";
 import { RetrievalStep } from "./steps/RetrievalStep";
 import { NoteStep } from "./steps/NoteStep";
@@ -154,8 +155,24 @@ function SessionFlow({ sessionId, onExit }: { sessionId: string; onExit: () => v
   if (loop.loading) return <p className="mx-auto max-w-2xl text-text-dim">Loading…</p>;
 
   const steps: Step[] = [
+    {
+      key: "planning",
+      title: "Plan",
+      content: <PlanningStep loop={loop} milestoneSessions={loop.milestoneSessions} />,
+    },
     { key: "pretest", title: "Pretest", optional: true, content: <PretestStep loop={loop} /> },
-    { key: "active-study", title: "Active study", optional: true, content: <ActiveStudyStep loop={loop} /> },
+    {
+      key: "active-study",
+      title: "Active study",
+      optional: true,
+      content: (
+        <ActiveStudyStep
+          loop={loop}
+          sessionSources={loop.sessionSources}
+          onToggleSourceDone={loop.onToggleSourceDone}
+        />
+      ),
+    },
     { key: "retrieve", title: "Retrieve from memory", optional: true, content: <RetrievalStep loop={loop} /> },
     { key: "note", title: "Atomic note", optional: true, content: <NoteStep loop={loop} /> },
     { key: "self-test", title: "Self-test", optional: true, content: <SelfTestStep loop={loop} /> },

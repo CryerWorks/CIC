@@ -61,6 +61,9 @@ export * from "./repositories/courseDependencies";
 // Feature 022: Research Agent — research sources + learning profiles.
 export * from "./repositories/research";
 
+// Feature 023: Session Sources — per-source completion for Daily Loop enrichment.
+export * from "./repositories/sessionSources";
+
 // Dashboard activity queries (streak, sessions, heatmap).
 export * from "./repositories/activity";
 
