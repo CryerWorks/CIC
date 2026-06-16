@@ -140,9 +140,11 @@ Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root (both created
 **Next:** Phase 2 — Retention engine (PRD §12). Native FSRS SRS (F3) **done** (010); the **Daily Loop (F2) done** (012, **two-phase**: plan a session on a Course, then do it from the Daily Loop); the **course-level curriculum layer done** (013 — ordered, milestone-mapped sessions with coverage + progress on the Course-detail screen); **native reminders/notifications done** (014, F9 — `tauri-plugin-notification` + an in-app daily scheduler, suppressed once practiced); the **Projects MVP done** (015, F11 — applied-practice artifacts materialized as vault notes, manual card-spawn on close, dashboard surfacing). **Phase 2 retention engine is feature-complete.** **Phase 3 begins:** the vendor-agnostic AI **Provider layer done** (016, PRD §10 — types/errors/config/secrets/three adapters/router/Settings UI in one PR; no consumer yet). Next consumer: **F10.2 RAG ingestion** (chunk + embed + vector store + retrieval, calling `router.embed('embeddings', …)`).
 
 <!-- SPECKIT START -->
-**Active feature:** `019-retrieval-quizzes` — **specified** (Phase 3, PRD **F5**). AI retrieval practice: generate quiz questions from Course material, answer-reveal with self-rating, spawn SRS cards for missed items. See `.agent/handoff/019-retrieval-quizzes/`.
+**Active feature:** none (all implemented through 019)
 
-**Just shipped:** `018-feynman-tutor` — **implemented** (F4). AI Socratic chat with RAG grounding, gap tracking, citations. 690 tests green.
+**Just shipped:** `019-retrieval-quizzes` — **implemented** (F5). AI quiz generation from Course material, answer-reveal UI with self-rating, card-spawning. 31 files, 727 tests green.
+
+**Prior:** `018-feynman-tutor` — **implemented** (F4). AI Socratic chat with RAG grounding.
 
 **Prior feature:** `017-rag-ingestion` — **implemented**. RAG ingestion: Markdown + EPUB parsing → chunking → embedding via router.embed() → sqlite-vec → Search Corpus page. 54 files, 619 tests green. See [specs/017-rag-ingestion/plan.md](specs/017-rag-ingestion/plan.md).
 

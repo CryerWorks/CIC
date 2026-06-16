@@ -55,4 +55,7 @@ export * from "./repositories/projects";
 // Feature 018: Feynman/Socratic Tutor — gap tracking (m0010).
 export * from "./repositories/feynmanGaps";
 
+// Feature 021: Interleaving Scheduler — course prerequisite tracking (m0012).
+export * from "./repositories/courseDependencies";
+
 export { metadataSchemaFor, type ResourceMetadata } from "./models/resourceMetadata";

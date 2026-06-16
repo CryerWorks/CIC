@@ -29,20 +29,21 @@ const ALL_TABLES = [
   "indexed_notes", // Feature 017 (migration m0009)
   "feynman_gaps", // Feature 018 (migration m0010)
   "quiz_sessions", // Feature 019 (migration m0011)
+  "course_dependencies", // Feature 021 (migration m0012)
 ];
 
 describe("migrate — fresh apply (FR-007 / SC-001)", () => {
-  it("takes user_version 0 → 11 and creates all 25 tables", async () => {
+  it("takes user_version 0 → 12 and creates all 26 tables", async () => {
     const db = NodeSqlExecutor.open();
 
     const before = await db.select<{ user_version: number }>("PRAGMA user_version");
     expect(before[0].user_version).toBe(0);
 
     const result = await migrate(db);
-    expect(result).toEqual({ from: 0, to: 11, applied: 11 });
+    expect(result).toEqual({ from: 0, to: 12, applied: 12 });
 
     const after = await db.select<{ user_version: number }>("PRAGMA user_version");
-    expect(after[0].user_version).toBe(11);
+    expect(after[0].user_version).toBe(12);
 
     const tables = await db.select<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",

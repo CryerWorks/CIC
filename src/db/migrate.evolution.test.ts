@@ -4,10 +4,10 @@ import { NodeSqlExecutor } from "./adapters/node";
 import { migrate, type Migration } from "./migrate";
 import { migrations as registered } from "./migrations";
 
-// A probe migration one past the latest registered version (v11 = m0011 quiz_sessions), so it
+// A probe migration one past the latest registered version (v12 = m0012 course_dependencies), so it
 // never collides with a shipped migration as the real history grows.
-const dummyV12: Migration = {
-  version: 12,
+const dummyV13: Migration = {
+  version: 13,
   name: "dummy-probe-table",
   sql: "CREATE TABLE IF NOT EXISTS _probe (id TEXT PRIMARY KEY)",
 };
@@ -16,21 +16,21 @@ describe("schema evolution: idempotency, version bump, refuse-newer (FR-007/FR-0
   it("is idempotent — a second migrate() with nothing pending applies 0", async () => {
     const db = NodeSqlExecutor.open();
     const first = await migrate(db);
-    expect(first.applied).toBe(11); // m0001–m0011
+    expect(first.applied).toBe(12); // m0001–m0012
 
     const second = await migrate(db);
-    expect(second).toEqual({ from: 11, to: 11, applied: 0 });
+    expect(second).toEqual({ from: 12, to: 12, applied: 0 });
   });
 
-  it("applies only the newly-registered migration on a version bump (11 → 12)", async () => {
+  it("applies only the newly-registered migration on a version bump (12 → 13)", async () => {
     const db = NodeSqlExecutor.open();
-    await migrate(db); // at v11 (latest registered)
+    await migrate(db); // at v12 (latest registered)
 
-    const result = await migrate(db, [...registered, dummyV12]);
-    expect(result).toEqual({ from: 11, to: 12, applied: 1 });
+    const result = await migrate(db, [...registered, dummyV13]);
+    expect(result).toEqual({ from: 12, to: 13, applied: 1 });
 
     const uv = await db.select<{ user_version: number }>("PRAGMA user_version");
-    expect(uv[0].user_version).toBe(12);
+    expect(uv[0].user_version).toBe(13);
 
     const probe = await db.select("SELECT name FROM sqlite_master WHERE name = '_probe'");
     expect(probe).toHaveLength(1);
@@ -38,9 +38,9 @@ describe("schema evolution: idempotency, version bump, refuse-newer (FR-007/FR-0
 
   it("refuses to operate on a store newer than the app knows about", async () => {
     const db = NodeSqlExecutor.open();
-    await migrate(db, [...registered, dummyV12]); // store advanced to v12
+    await migrate(db, [...registered, dummyV13]); // store advanced to v13
 
-    // An older build that only knows the registered set (latest v11) must refuse, not risk corruption.
+    // An older build that only knows the registered set (latest v12) must refuse, not risk corruption.
     await expect(migrate(db, registered)).rejects.toThrow(/newer/i);
   });
 });
