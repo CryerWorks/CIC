@@ -97,14 +97,15 @@ export function useAIConfig(): UseAIConfigResult {
         return { ok: false, error: `A provider with id "${input.id}" already exists.` };
       }
       try {
-        // Only Anthropic requires a key up front. openai-compatible accepts keyless local servers
-        // (LM Studio, llama.cpp `--server`, vLLM) AND keyed remote vendors (OpenAI, OpenRouter,
-        // etc.) — the user picks per provider.
-        if (input.type === "anthropic" && !input.apiKey?.trim()) {
-          return { ok: false, error: "An API key is required for Anthropic." };
+        // Anthropic, DeepSeek, Gemini, and Voyage require an API key.
+        if (
+          (input.type === "anthropic" || input.type === "deepseek" || input.type === "gemini" || input.type === "voyage") &&
+          !input.apiKey?.trim()
+        ) {
+          return { ok: false, error: `An API key is required for ${input.type}.` };
         }
         if (ai.status === "ready" && input.apiKey?.trim()) {
-          await ai.secrets.set(input.id, input.apiKey.trim());
+          await ai.secrets.set(input.id.trim(), input.apiKey.trim());
         }
         const pcfg: ProviderConfig = buildProviderConfig(input);
         const next: AIConfig = { ...liveConfig, providers: [...liveConfig.providers, pcfg] };

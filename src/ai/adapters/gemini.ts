@@ -50,8 +50,11 @@ export class GeminiAdapter implements Provider {
       `${GeminiAdapter.BASE}/models/${this.defaultModel}?key=${key ?? ""}`,
       { signal: opts?.signal },
     );
-    const ok = res.ok || res.status === 401;
-    if (!ok) throw new ProviderError("offline", this.id, "Gemini API unreachable", true);
+    if (!key) throw new ProviderError("auth", this.id, "No API key configured — add one in Settings → AI", false);
+    if (!res.ok) {
+      if (res.status === 401 || res.status === 403) throw new ProviderError("auth", this.id, "Invalid API key", false);
+      throw new ProviderError("offline", this.id, "Gemini API unreachable", true);
+    }
     return {
       chat: true, embeddings: true, streaming: true, tools: false,
       isLocal: false,

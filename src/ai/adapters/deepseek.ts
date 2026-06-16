@@ -52,8 +52,11 @@ export class DeepSeekAdapter implements Provider {
       headers: { Authorization: `Bearer ${key ?? ""}` },
       signal: opts?.signal,
     });
-    const ok = res.ok || res.status === 401;
-    if (!ok) throw new ProviderError("offline", this.id, "DeepSeek API unreachable", true);
+    if (!key) throw new ProviderError("auth", this.id, "No API key configured — add one in Settings → AI", false);
+    if (!res.ok) {
+      if (res.status === 401) throw new ProviderError("auth", this.id, "Invalid API key", false);
+      throw new ProviderError("offline", this.id, "DeepSeek API unreachable", true);
+    }
     return {
       chat: true, embeddings: true, streaming: true, tools: false,
       isLocal: false,
