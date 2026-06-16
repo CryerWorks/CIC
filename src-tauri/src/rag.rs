@@ -248,12 +248,12 @@ pub fn rag_search(
     let mut has_resource_id = false;
 
     if let Some(ref f) = filter {
-        if let Some(ref sk) = f.source_kind {
+        if let Some(ref _sk) = f.source_kind {
             sql.push_str(&format!(" AND c.source_kind = ?{}", param_idx));
             param_idx += 1;
             has_source_kind = true;
         }
-        if let Some(ref rid) = f.resource_id {
+        if let Some(ref _rid) = f.resource_id {
             sql.push_str(&format!(" AND rm.resource_id = ?{}", param_idx));
             param_idx += 1;
             has_resource_id = true;
