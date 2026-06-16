@@ -1,4 +1,3 @@
-import EPub from "epub2";
 import type { ChunkInput } from "../types";
 
 export interface ParsedEpub {
@@ -21,9 +20,11 @@ export interface EpubChapter {
 
 /**
  * Parse an EPUB file into structured chapters with text and TOC hierarchy.
- * Uses epub2 callback API, promisified.
+ * Dynamically imports epub2 so the Node.js-only dependency isn't bundled
+ * into the Tauri webview until the user actually opens an EPUB.
  */
-export function parseEpub(filePath: string): Promise<ParsedEpub> {
+export async function parseEpub(filePath: string): Promise<ParsedEpub> {
+  const EPub = (await import("epub2")).default;
   return new Promise((resolve, reject) => {
     const epub = new EPub(filePath);
 
@@ -49,7 +50,6 @@ export function parseEpub(filePath: string): Promise<ParsedEpub> {
                 title: item.title ?? "",
                 headingPath: path.join(" > "),
               });
-              // Walk sub-items if any (nested NCX)
               const subItems = (item as unknown as Record<string, unknown>).sub as typeof tocItems | undefined;
               if (Array.isArray(subItems) && subItems.length > 0) {
                 walkToc(subItems, path, idMap);
@@ -94,7 +94,6 @@ export function parseEpub(filePath: string): Promise<ParsedEpub> {
 
             pending--;
             if (pending === 0) {
-              // Sort by spine order
               chapters.sort((a, b) => a.index - b.index);
               resolve({ title, chapters });
             }
