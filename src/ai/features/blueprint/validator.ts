@@ -24,11 +24,38 @@ const BlueprintTargetSchema = z.object({
   resourceIds: z.array(z.string()).optional(),
 });
 
+const SessionSourceSchema = z.object({
+  url: z.string().min(1, "Source URL is required").max(2000),
+  title: z.string().min(1, "Source title is required").max(300),
+  type: z.enum(["reading", "watching"]),
+  estimatedMinutes: z.number().int().min(1).max(9999).default(30),
+});
+
+const SessionCardSeedSchema = z.object({
+  front: z.string().min(1, "Card front is required").max(500),
+  sourceIndex: z.number().int().min(0),
+});
+
+const SessionSeedSchema = z.object({
+  title: z.string().min(1, "Session title is required").max(200),
+  objective: z.string().min(1, "Session objective is required").max(500),
+  sources: z.array(SessionSourceSchema).max(50).default([]),
+  cards: z.array(SessionCardSeedSchema).max(100).default([]),
+});
+
+const ProjectSeedSchema = z.object({
+  title: z.string().min(1, "Project title is required").max(200),
+  description: z.string().min(1).max(1000),
+  requiredSessionIndices: z.array(z.number().int().min(0)).max(20).default([]),
+});
+
 const MilestoneSeedSchema = z.object({
   order: z.number().int().min(0),
   capability: z.string().min(1, "Milestone capability is required").max(300),
   description: z.string().min(1).max(500),
   difficulty: z.number().int().min(1).max(5),
+  sessions: z.array(SessionSeedSchema).max(20).optional().default([]),
+  projects: z.array(ProjectSeedSchema).max(10).optional().default([]),
 });
 
 const CardSeedSchema = z.object({
@@ -115,6 +142,36 @@ export function validateBlueprint(input: unknown): CourseBlueprint {
     }
   }
 
+  // Post-schema validation: verify session card source indices are in range
+  for (let mi = 0; mi < milestoneCount; mi++) {
+    const ms = blueprint.milestones[mi];
+    if (!ms.sessions || ms.sessions.length === 0) continue;
+
+    for (let si = 0; si < ms.sessions.length; si++) {
+      const session = ms.sessions[si];
+      const sourceCount = session.sources.length;
+      for (const sc of session.cards) {
+        if (sc.sourceIndex >= sourceCount) {
+          throw new BlueprintValidationError(
+            `Session card "${sc.front.substring(0, 50)}" references source index ${sc.sourceIndex} in session "${session.title}", but only ${sourceCount} source(s) exist in that session`,
+          );
+        }
+      }
+    }
+
+    // Verify project requiredSessionIndices are in range
+    if (!ms.projects) continue;
+    for (const proj of ms.projects) {
+      for (const rsi of proj.requiredSessionIndices) {
+        if (rsi >= ms.sessions.length) {
+          throw new BlueprintValidationError(
+            `Project "${proj.title}" references session index ${rsi}, but only ${ms.sessions.length} session(s) exist in milestone ${mi}`,
+          );
+        }
+      }
+    }
+  }
+
   return blueprint;
 }
 
@@ -161,6 +218,8 @@ export function validatePartialBlueprint(
     const r = BlueprintTargetSchema.safeParse(input.target);
     if (r.success) partial.target = r.data;
   }
+
+  // Sessions and projects are validated as part of milestones — no separate partial field needed
 
   return partial;
 }

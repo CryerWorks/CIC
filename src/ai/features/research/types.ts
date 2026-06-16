@@ -3,9 +3,14 @@
  *
  * Defines the data model for the research pipeline:
  * goal → search → fetch → evaluate → profile → blueprint → campaign.
+ *
+ * V2 adds session and project seed types for the structured course plan.
  */
 
-import type { CourseBlueprint } from "../blueprint/types";
+import type { CourseBlueprint, SessionSeed, ProjectSeed } from "../blueprint/types";
+
+/** Re-export session and project seeds for convenience. */
+export type { SessionSeed, ProjectSeed };
 
 /** The type of a web search result. */
 export type ResearchSourceType =

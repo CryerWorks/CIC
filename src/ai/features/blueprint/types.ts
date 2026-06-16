@@ -13,6 +13,48 @@ export type BlueprintScope = "course";
 /** Depth: how deeply the learner wants to engage. */
 export type BlueprintDepth = "overview" | "working" | "mastery";
 
+/** A single source within a research session (reading or watching material). */
+export interface SessionSource {
+  /** URL of the source. */
+  url: string;
+  /** Title of the source. */
+  title: string;
+  /** Whether this is a reading or watching assignment. */
+  type: "reading" | "watching";
+  /** Estimated time to consume in minutes. */
+  estimatedMinutes: number;
+}
+
+/** A card seed within a session, referencing a source by index. */
+export interface SessionCardSeed {
+  /** Card front (question/prompt). */
+  front: string;
+  /** Which source in the session's sources[] this card refers to. */
+  sourceIndex: number;
+}
+
+/** A structured learning session within a milestone. */
+export interface SessionSeed {
+  /** Session title. */
+  title: string;
+  /** Learning objective for the session. */
+  objective: string;
+  /** Sources (readings/watchings) for this session. */
+  sources: SessionSource[];
+  /** Per-source card seeds for this session. */
+  cards: SessionCardSeed[];
+}
+
+/** A project within a milestone, gated on session completion. */
+export interface ProjectSeed {
+  /** Project title. */
+  title: string;
+  /** Project description / brief. */
+  description: string;
+  /** Indices into the milestone's sessions[] that must be completed first. */
+  requiredSessionIndices: number[];
+}
+
 /** One planned capability milestone in the course. */
 export interface MilestoneSeed {
   /** Display order (0-based). */
@@ -23,6 +65,10 @@ export interface MilestoneSeed {
   description: string;
   /** Estimated difficulty ramp (1-5). */
   difficulty: number;
+  /** Structured sessions with per-source cards (V2). */
+  sessions?: SessionSeed[];
+  /** Projects gated on session completion (V2). */
+  projects?: ProjectSeed[];
 }
 
 /** A suggested card seed — front only, back is blank (scaffold-only, v1). */

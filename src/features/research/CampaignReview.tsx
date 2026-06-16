@@ -41,6 +41,24 @@ export function CampaignReview({
     (sum, c) => sum + c.courseBlueprint.milestones.length,
     0,
   );
+  const totalSessions = result.courses.reduce(
+    (sum, c) =>
+      sum +
+      c.courseBlueprint.milestones.reduce(
+        (s, ms) => s + (ms.sessions?.length ?? 0),
+        0,
+      ),
+    0,
+  );
+  const totalProjects = result.courses.reduce(
+    (sum, c) =>
+      sum +
+      c.courseBlueprint.milestones.reduce(
+        (s, ms) => s + (ms.projects?.length ?? 0),
+        0,
+      ),
+    0,
+  );
 
   // If all courses have been materialized, show success
   if (materializeResults.length === result.courses.length) {
@@ -56,6 +74,8 @@ export function CampaignReview({
             <div className="flex flex-col gap-1 text-sm text-text-dim">
               <span>{result.courses.length} course(s)</span>
               <span>{totalMilestones} milestone(s)</span>
+              <span>{totalSessions} session(s)</span>
+              <span>{totalProjects} project(s)</span>
               <span>{totalCards} suggested card(s)</span>
             </div>
             <Button onClick={onBack}>Done</Button>
@@ -77,6 +97,8 @@ export function CampaignReview({
         <div className="flex items-center gap-2">
           <Tag tone="brand">{result.courses.length} courses</Tag>
           <Tag tone="neutral">{totalMilestones} milestones</Tag>
+          <Tag tone="neutral">{totalSessions} sessions</Tag>
+          <Tag tone="neutral">{totalProjects} projects</Tag>
           <Tag tone="neutral">{totalCards} cards</Tag>
         </div>
       </div>
@@ -135,11 +157,14 @@ export function CampaignReview({
             <h3 className="mb-2 text-sm font-semibold text-text">Materialize Campaign?</h3>
             <p className="mb-4 text-sm text-text-dim">
               This will create <strong>{result.courses.length} course(s)</strong> with{" "}
-              <strong>{totalMilestones} milestone(s)</strong> and{" "}
+              <strong>{totalMilestones} milestone(s)</strong>,{" "}
+              <strong>{totalSessions} session(s)</strong>,{" "}
+              <strong>{totalProjects} project(s)</strong>, and{" "}
               <strong>{totalCards} suggested card(s)</strong>.
             </p>
             <p className="mb-4 text-xs text-text-dim">
               Each course will be written to your vault as a MOC (Map of Content) document.
+              Sessions and projects will be created for each milestone.
               Cards are scaffold-only (fronts only). This action requires explicit approval.
             </p>
             <div className="flex justify-end gap-2">
@@ -174,6 +199,15 @@ function CourseReviewCard({
 }) {
   const bp = course.courseBlueprint;
 
+  const totalSessions = bp.milestones.reduce(
+    (sum, ms) => sum + (ms.sessions?.length ?? 0),
+    0,
+  );
+  const totalProjects = bp.milestones.reduce(
+    (sum, ms) => sum + (ms.projects?.length ?? 0),
+    0,
+  );
+
   return (
     <Panel title={`${index + 1}. ${course.title}`}>
       <div className="flex flex-col gap-3">
@@ -184,22 +218,74 @@ function CourseReviewCard({
             {materialized ? "✓ Materialized" : "Pending"}
           </Tag>
           <span>{bp.milestones.length} milestones</span>
+          <span>{totalSessions} sessions</span>
+          <span>{totalProjects} projects</span>
           <span>{bp.cardSeeds.length} cards</span>
         </div>
 
-        {/* Milestones */}
+        {/* Milestones with Sessions & Projects */}
         <div className="flex flex-col gap-2">
           <h4 className="text-xs font-semibold uppercase text-text-dim">Milestones</h4>
-          {bp.milestones.map((ms, i) => (
+          {bp.milestones.map((ms, mi) => (
             <div
-              key={i}
+              key={mi}
               className="rounded-sm border border-line-bright bg-surface-sunken p-2"
             >
               <div className="flex items-start gap-2">
-                <span className="mt-0.5 text-xs font-bold text-text-dim">{i + 1}.</span>
+                <span className="mt-0.5 text-xs font-bold text-text-dim">{mi + 1}.</span>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-text">{ms.capability}</p>
                   <p className="mt-0.5 text-xs text-text-dim">{ms.description}</p>
+
+                  {/* Sessions (collapsed) */}
+                  {ms.sessions && ms.sessions.length > 0 && (
+                    <details className="group mt-2">
+                      <summary className="cursor-pointer text-[11px] font-semibold text-text-dim hover:text-text">
+                        {ms.sessions.length} session(s)
+                      </summary>
+                      <div className="mt-1 flex flex-col gap-1.5">
+                        {ms.sessions.map((session, si) => (
+                          <div
+                            key={si}
+                            className="rounded-sm border border-line-dim bg-surface-base px-2 py-1.5"
+                          >
+                            <p className="text-xs font-medium text-text">{session.title}</p>
+                            <p className="text-[11px] text-text-dim">{session.objective}</p>
+                            <p className="text-[11px] text-text-dim">
+                              {session.sources.length} source(s) &middot;{" "}
+                              {session.cards.length} card(s)
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+
+                  {/* Projects (collapsed) */}
+                  {ms.projects && ms.projects.length > 0 && (
+                    <details className="group mt-2">
+                      <summary className="cursor-pointer text-[11px] font-semibold text-text-dim hover:text-text">
+                        {ms.projects.length} project(s)
+                      </summary>
+                      <div className="mt-1 flex flex-col gap-1.5">
+                        {ms.projects.map((proj, pi) => (
+                          <div
+                            key={pi}
+                            className="rounded-sm border border-line-dim bg-surface-base px-2 py-1.5"
+                          >
+                            <p className="text-xs font-medium text-text">{proj.title}</p>
+                            <p className="text-[11px] text-text-dim">{proj.description}</p>
+                            {proj.requiredSessionIndices.length > 0 && (
+                              <p className="text-[11px] text-text-dim">
+                                Requires sessions:{" "}
+                                {proj.requiredSessionIndices.map((i) => `#${i + 1}`).join(", ")}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
                 <div className="flex items-center gap-0.5">
                   {Array.from({ length: ms.difficulty }, (_, j) => (
